@@ -69,3 +69,69 @@ input[type=range]::-webkit-slider-thumb { border: 2px solid cyan; height: 20px; 
 #game-over-screen p { color: white; font-size: 16px; margin-bottom: 30px; }
 #final-score { color: yellow; font-weight: bold; }
 #shutdown-screen { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: black; color: red; flex-direction: column; justify-content: center; align-items: center; pointer-events: auto; z-index: 100;}
+
+/* --- VIRTUAL CONTROLLER STYLES --- */
+#mobile-controls {
+  display: none; /* Hidden by default, shown via JS on touch devices */
+  position: absolute;
+  bottom: 40px;
+  left: 0;
+  width: 100%;
+  padding: 0 40px;
+  box-sizing: border-box;
+  justify-content: space-between;
+  align-items: flex-end;
+  pointer-events: none; /* Let canvas clicks pass through the empty space */
+  z-index: 50;
+}
+
+#joystick-base {
+  width: 120px;
+  height: 120px;
+  background: rgba(0, 255, 255, 0.1);
+  border: 2px solid cyan;
+  border-radius: 50%;
+  position: relative;
+  pointer-events: auto; /* Catch touches */
+  touch-action: none; /* Prevent scrolling */
+  box-shadow: 0 0 15px cyan, inset 0 0 10px cyan;
+  flex-shrink: 0;
+}
+
+#joystick-stick {
+  width: 60px;
+  height: 60px;
+  background: cyan;
+  border-radius: 50%;
+  position: absolute;
+  top: 30px; /* Center it */
+  left: 30px;
+  box-shadow: 0 0 15px cyan;
+  pointer-events: none; 
+}
+
+#btn-fire {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  background: rgba(255, 0, 0, 0.2);
+  border: 2px solid red;
+  color: red;
+  font-size: 18px;
+  font-weight: bold;
+  pointer-events: auto;
+  touch-action: none;
+  box-shadow: 0 0 15px red, inset 0 0 10px red;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+#btn-fire:active {
+  background: rgba(255, 0, 0, 0.5);
+  box-shadow: 0 0 25px red, inset 0 0 20px red;
+  color: white;
+}

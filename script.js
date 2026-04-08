@@ -4,12 +4,14 @@ let sfxVolume = 1.0;
 let difficulty = 'normal'; 
 let spawnTimer, shootTimer; 
 
+// Detect Mobile Touch Device
+const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
 // --- DOM Elements & Resize handling ---
 const c = document.getElementById("c");
 const ctx = c.getContext("2d");
 c.width = innerWidth; c.height = innerHeight;
 
-// Handle orientation changes and resizing
 window.addEventListener('resize', () => {
   c.width = innerWidth;
   c.height = innerHeight;
@@ -21,7 +23,8 @@ const menus = {
   pause: document.getElementById('pause-menu'),
   gameOver: document.getElementById('game-over-screen'),
   hud: document.getElementById('hud'),
-  shutdown: document.getElementById('shutdown-screen')
+  shutdown: document.getElementById('shutdown-screen'),
+  mobileControls: document.getElementById('mobile-controls')
 };
 
 // UI Handlers
@@ -116,6 +119,9 @@ let health, score, currentLevel;
 let bossActive = false;
 let boss = null;
 
+// Joystick State
+let joystick = { active: false, dx: 0, dy: 0, touchId: null };
+
 stars = [];
 for (let i = 0; i < 150; i++) {
   stars.push({ x: Math.random() * c.width, y: Math.random() * c.height, size: Math.random() * 2 + 0.5, speed: Math.random() * 1.5 + 0.2 });
@@ -126,30 +132,14 @@ for (let i = 0; i < 150; i++) {
 function spawnBoss() {
   bossActive = true;
   clearInterval(spawnTimer);
-
   playSound('bossWarning');
   setTimeout(() => playSound('bossWarning'), 1000);
-
   let speedMod = difficulty === 'easy' ? 0.6 : (difficulty === 'normal' ? 1.0 : 1.5);
-
-  boss = {
-    x: c.width / 2,
-    y: -150,
-    targetY: 120,
-    width: 160,
-    height: 100,
-    hp: 1000 + (currentLevel * 500),
-    maxHp: 1000 + (currentLevel * 500),
-    speed: (2 + (currentLevel * 0.5)) * speedMod,
-    direction: 1,
-    attackTimer: 0
-  };
+  boss = { x: c.width / 2, y: -150, targetY: 120, width: 160, height: 100, hp: 1000 + (currentLevel * 500), maxHp: 1000 + (currentLevel * 500), speed: (2 + (currentLevel * 0.5)) * speedMod, direction: 1, attackTimer: 0 };
 }
 
 function applyDifficultyTimers() {
-  clearInterval(spawnTimer);
-  clearInterval(shootTimer);
-  
+  clearInterval(spawnTimer); clearInterval(shootTimer);
   let baseSpawn = difficulty === 'easy' ? 2000 : (difficulty === 'normal' ? 1500 : 1000);
   let baseFire = difficulty === 'easy' ? 4000 : (difficulty === 'normal' ? 3000 : 2000);
   let speedMod = difficulty === 'easy' ? 0.6 : (difficulty === 'normal' ? 1.0 : 1.5);
@@ -163,7 +153,6 @@ function applyDifficultyTimers() {
     else if(side===1){ x=Math.random()*c.width; y=c.height+30; }
     else if(side===2){ x=-30; y=Math.random()*c.height; }
     else { x=c.width+30; y=Math.random()*c.height; }
-    
     let enemySpeed = (0.5 + (Math.random() * 0.5)) * speedMod * (1 + (currentLevel * 0.2));
     enemies.push({x, y, speed: enemySpeed});
   }, baseSpawn * levelMultiplier);
@@ -193,23 +182,24 @@ function startGame(){
   Object.values(menus).forEach(m => m.style.display = 'none');
   menus.hud.style.display = "flex";
   
+  // Only show the mobile joystick/fire button on actual mobile devices
+  if (isTouchDevice) {
+    menus.mobileControls.style.display = "flex";
+  }
+  
   updateUI();
   if (audioCtx.state === 'suspended') audioCtx.resume();
   startBGM(); 
-  
   applyDifficultyTimers();
 }
 
 function triggerLevelUp() {
-  currentLevel++;
-  playSound('levelup');
-  applyDifficultyTimers(); 
-  updateUI();
+  currentLevel++; playSound('levelup'); applyDifficultyTimers(); updateUI();
 }
 
 function returnToMenu() {
   inMenu = true; isPaused = false;
-  menus.pause.style.display = "none"; menus.hud.style.display = "none"; menus.main.style.display = "flex";
+  menus.pause.style.display = "none"; menus.hud.style.display = "none"; menus.mobileControls.style.display = "none"; menus.main.style.display = "flex";
   clearInterval(bgmInterval); isBgmPlaying = false;
 }
 
@@ -226,14 +216,13 @@ function togglePause() {
 function triggerGameOver() {
   gameOver = true;
   document.getElementById('final-score').innerText = score;
-  menus.hud.style.display = "none"; menus.gameOver.style.display = "flex";
+  menus.hud.style.display = "none"; menus.mobileControls.style.display = "none"; menus.gameOver.style.display = "flex";
   clearInterval(bgmInterval); isBgmPlaying = false; 
 }
 
 function updateUI() {
   document.getElementById('score-display').innerText = "SCORE: " + score;
   document.getElementById('level-display').innerText = "LEVEL: " + (currentLevel + 1);
-  
   let displayHealth = Math.max(0, health);
   let hBar = document.getElementById('health-bar'); let hBox = document.querySelector('.health-box'); let hLabel = document.querySelector('.health-label');
   hBar.style.width = displayHealth + "%";
@@ -247,42 +236,93 @@ function updateUI() {
   }
 }
 
-// --- Inputs (Desktop & Mobile) ---
+// --- Menus & Core Inputs ---
 document.getElementById('btn-play').addEventListener('click', startGame);
 document.getElementById('btn-restart').addEventListener('click', startGame);
 document.getElementById('btn-resume').addEventListener('click', togglePause);
 document.getElementById('btn-quit').addEventListener('click', returnToMenu);
+window.addEventListener("keydown", (e) => { if (e.code === "Escape") togglePause(); });
 
-// Desktop Mouse
+// --- Desktop Mouse Controls ---
 addEventListener("mousemove", e=>{ mouse.x = e.clientX; mouse.y = e.clientY; });
 window.addEventListener("mousedown", (e)=> { if(e.target.id === "c") firing = true; });
 window.addEventListener("mouseup", ()=> firing = false);
 
-// Mobile Touch Mapping
-window.addEventListener("touchstart", (e)=> {
-  if(e.target.id === "c") {
-    firing = true;
-    mouse.x = e.touches[0].clientX;
-    mouse.y = e.touches[0].clientY;
-    
-    // Web Audio requires user interaction to unlock on mobile
-    if (audioCtx.state === 'suspended') audioCtx.resume();
+// --- Mobile Joystick & Fire Button Logic ---
+const joyBase = document.getElementById('joystick-base');
+const joyStick = document.getElementById('joystick-stick');
+const fireBtn = document.getElementById('btn-fire');
+
+joyBase.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  if (joystick.touchId !== null) return; // Prevent multiple touches on stick
+  let touch = e.changedTouches[0];
+  joystick.touchId = touch.identifier;
+  updateJoystickVector(touch);
+}, {passive: false});
+
+joyBase.addEventListener('touchmove', (e) => {
+  e.preventDefault();
+  for (let i = 0; i < e.changedTouches.length; i++) {
+    if (e.changedTouches[i].identifier === joystick.touchId) {
+      updateJoystickVector(e.changedTouches[i]);
+    }
   }
 }, {passive: false});
 
-window.addEventListener("touchmove", e => {
-  if (firing) {
-    mouse.x = e.touches[0].clientX;
-    mouse.y = e.touches[0].clientY;
-    e.preventDefault(); // Prevents swiping actions from triggering browser refresh
+const resetJoystick = (e) => {
+  e.preventDefault();
+  for (let i = 0; i < e.changedTouches.length; i++) {
+    if (e.changedTouches[i].identifier === joystick.touchId) {
+      joystick.touchId = null;
+      joystick.active = false;
+      joystick.dx = 0;
+      joystick.dy = 0;
+      joyStick.style.transform = `translate(0px, 0px)`;
+    }
   }
+};
+
+joyBase.addEventListener('touchend', resetJoystick, {passive: false});
+joyBase.addEventListener('touchcancel', resetJoystick, {passive: false});
+
+function updateJoystickVector(touch) {
+  joystick.active = true;
+  let rect = joyBase.getBoundingClientRect();
+  let centerX = rect.left + rect.width / 2;
+  let centerY = rect.top + rect.height / 2;
+  
+  let dx = touch.clientX - centerX;
+  let dy = touch.clientY - centerY;
+  
+  let distance = Math.sqrt(dx*dx + dy*dy);
+  let maxDist = rect.width / 2 - 30; // Maximum travel distance for the visual stick
+  
+  // Constrain visual stick to inside the circle
+  if (distance > maxDist) {
+    dx = (dx / distance) * maxDist;
+    dy = (dy / distance) * maxDist;
+  }
+  
+  joyStick.style.transform = `translate(${dx}px, ${dy}px)`;
+  
+  // Set movement vectors between -1.0 and 1.0
+  joystick.dx = dx / maxDist;
+  joystick.dy = dy / maxDist;
+}
+
+// Mobile Fire Button
+fireBtn.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  firing = true;
+  if (audioCtx.state === 'suspended') audioCtx.resume();
 }, {passive: false});
 
-window.addEventListener("touchend", ()=> firing = false);
+fireBtn.addEventListener('touchend', (e) => { e.preventDefault(); firing = false; }, {passive: false});
+fireBtn.addEventListener('touchcancel', (e) => { e.preventDefault(); firing = false; }, {passive: false});
 
-window.addEventListener("keydown", (e) => { if (e.code === "Escape") togglePause(); });
 
-// Player Shooting Logic
+// --- Player Shooting Interval ---
 setInterval(()=>{
   if(gameOver || inMenu || isPaused || !firing) return;
   playSound('shoot'); 
@@ -318,10 +358,31 @@ function update(){
 
   if(gameOver || inMenu || isPaused) return;
 
-  player.x += (mouse.x-player.x)*0.1;
-  player.y += (mouse.y-player.y)*0.1;
-  player.angle = Math.atan2(mouse.y-player.y, mouse.x-player.x);
+  // PLAYER MOVEMENT (Desktop vs Mobile)
+  if (joystick.active) {
+    let speed = 6; // Max move speed on mobile
+    player.x += joystick.dx * speed;
+    player.y += joystick.dy * speed;
+    
+    // Rotate ship to face joystick direction
+    if (joystick.dx !== 0 || joystick.dy !== 0) {
+      player.angle = Math.atan2(joystick.dy, joystick.dx);
+      // Hack to keep shooting mechanics aligned with joystick rotation
+      mouse.x = player.x + Math.cos(player.angle) * 100;
+      mouse.y = player.y + Math.sin(player.angle) * 100;
+    }
+  } else if (!isTouchDevice) {
+    // Desktop Mouse Follow
+    player.x += (mouse.x-player.x)*0.1;
+    player.y += (mouse.y-player.y)*0.1;
+    player.angle = Math.atan2(mouse.y-player.y, mouse.x-player.x);
+  }
 
+  // Prevent ship from flying off-screen
+  player.x = Math.max(15, Math.min(c.width - 15, player.x));
+  player.y = Math.max(15, Math.min(c.height - 15, player.y));
+
+  // Entity Updates
   bullets = bullets.filter(b=>{ b.x+=b.dx; b.y+=b.dy; return b.x>0 && b.x<c.width && b.y>0 && b.y<c.height; });
 
   enemyBullets = enemyBullets.filter(b=>{
@@ -332,7 +393,6 @@ function update(){
     return b.x>0 && b.x<c.width && b.y>0 && b.y<c.height;
   });
 
-  // Boss Update Logic
   if (bossActive && boss) {
     if (boss.y < boss.targetY) {
       boss.y += 2; 
@@ -345,11 +405,9 @@ function update(){
       boss.attackTimer++;
       let attackRate = Math.max(30, 80 - (currentLevel * 10)); 
       if (boss.attackTimer > attackRate) {
-        boss.attackTimer = 0;
-        playSound('enemyShoot');
+        boss.attackTimer = 0; playSound('enemyShoot');
         let a = Math.atan2(player.y - boss.y, player.x - boss.x);
         let bs = 3 + currentLevel * 0.5;
-        
         enemyBullets.push({ x: boss.x, y: boss.y, dx: Math.cos(a)*bs, dy: Math.sin(a)*bs });
         enemyBullets.push({ x: boss.x, y: boss.y, dx: Math.cos(a-0.3)*bs, dy: Math.sin(a-0.3)*bs });
         enemyBullets.push({ x: boss.x, y: boss.y, dx: Math.cos(a+0.3)*bs, dy: Math.sin(a+0.3)*bs });
@@ -360,18 +418,9 @@ function update(){
       let b = bullets[i];
       if (b.x > boss.x - boss.width/2 && b.x < boss.x + boss.width/2 &&
           b.y > boss.y - boss.height/2 && b.y < boss.y + boss.height/2) {
-        
-        boss.hp -= 10;
-        playSound('bossHit');
-        bullets.splice(i, 1);
-        
+        boss.hp -= 10; playSound('bossHit'); bullets.splice(i, 1);
         if (boss.hp <= 0) {
-          bossActive = false;
-          score += 250; 
-          playSound('explode');
-          triggerLevelUp(); 
-          boss = null;
-          break;
+          bossActive = false; score += 250; playSound('explode'); triggerLevelUp(); boss = null; break;
         }
       }
     }
@@ -379,13 +428,11 @@ function update(){
     if (bossActive && boss) {
       if (player.x > boss.x - boss.width/2 && player.x < boss.x + boss.width/2 &&
           player.y > boss.y - boss.height/2 && player.y < boss.y + boss.height/2) {
-          health -= 2; 
-          updateUI();
+          health -= 2; updateUI();
       }
     }
   }
 
-  // Normal Enemy Logic
   enemies = enemies.filter(e=>{
     let a = Math.atan2(player.y-e.y, player.x-e.x);
     e.x += Math.cos(a)*e.speed;
@@ -394,15 +441,9 @@ function update(){
     for(let i = bullets.length - 1; i >= 0; i--){
       let b = bullets[i];
       if( b.x>e.x && b.x<e.x+30 && b.y>e.y && b.y<e.y+30 ){
-        score += 10; 
-        playSound('explode'); 
-        
-        if (score >= (currentLevel + 1) * 500 && !bossActive) {
-          spawnBoss();
-        } else {
-          updateUI(); 
-        }
-        
+        score += 10; playSound('explode'); 
+        if (score >= (currentLevel + 1) * 500 && !bossActive) spawnBoss();
+        else updateUI(); 
         bullets.splice(i, 1); return false;
       }
     }
@@ -416,9 +457,7 @@ function draw(){
   ctx.fillStyle="black"; ctx.fillRect(0,0,c.width,c.height);
 
   ctx.fillStyle="white";
-  stars.forEach(s => {
-    ctx.globalAlpha = s.speed / 2; ctx.fillRect(s.x, s.y, s.size, s.size);
-  });
+  stars.forEach(s => { ctx.globalAlpha = s.speed / 2; ctx.fillRect(s.x, s.y, s.size, s.size); });
   ctx.globalAlpha = 1.0; 
 
   if (inMenu) return;
@@ -430,9 +469,7 @@ function draw(){
   });
 
   ctx.shadowColor = "yellow"; ctx.fillStyle = "yellow";
-  enemyBullets.forEach(b=>{
-    ctx.beginPath(); ctx.arc(b.x, b.y, 4, 0, Math.PI*2); ctx.fill();
-  });
+  enemyBullets.forEach(b=>{ ctx.beginPath(); ctx.arc(b.x, b.y, 4, 0, Math.PI*2); ctx.fill(); });
   ctx.shadowBlur = 0; 
 
   enemies.forEach(e=>{
@@ -443,42 +480,21 @@ function draw(){
     ctx.fill(); ctx.stroke(); ctx.restore();
   });
 
-  // Render Boss
   if (bossActive && boss) {
-    ctx.save();
-    ctx.translate(boss.x, boss.y);
-    
-    ctx.shadowBlur = 20; ctx.shadowColor = "magenta";
-    ctx.fillStyle = "#1a001a"; ctx.strokeStyle = "magenta"; ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(0, boss.height/2);       
-    ctx.lineTo(boss.width/2, 0);        
-    ctx.lineTo(boss.width/2 - 20, -boss.height/2); 
-    ctx.lineTo(-boss.width/2 + 20, -boss.height/2); 
-    ctx.lineTo(-boss.width/2, 0);       
-    ctx.closePath();
-    ctx.fill(); ctx.stroke();
-
-    ctx.fillStyle = "white";
-    ctx.beginPath(); ctx.arc(0, 10, 15, 0, Math.PI*2); ctx.fill();
-
+    ctx.save(); ctx.translate(boss.x, boss.y);
+    ctx.shadowBlur = 20; ctx.shadowColor = "magenta"; ctx.fillStyle = "#1a001a"; ctx.strokeStyle = "magenta"; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.moveTo(0, boss.height/2); ctx.lineTo(boss.width/2, 0); ctx.lineTo(boss.width/2 - 20, -boss.height/2); 
+    ctx.lineTo(-boss.width/2 + 20, -boss.height/2); ctx.lineTo(-boss.width/2, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = "white"; ctx.beginPath(); ctx.arc(0, 10, 15, 0, Math.PI*2); ctx.fill();
     let hpPercent = Math.max(0, boss.hp / boss.maxHp);
-    ctx.fillStyle = "rgba(255, 0, 0, 0.5)";
-    ctx.fillRect(-boss.width/2, -boss.height/2 - 25, boss.width, 8);
-    ctx.fillStyle = "lime"; ctx.shadowBlur = 10; ctx.shadowColor = "lime";
-    ctx.fillRect(-boss.width/2, -boss.height/2 - 25, boss.width * hpPercent, 8);
+    ctx.fillStyle = "rgba(255, 0, 0, 0.5)"; ctx.fillRect(-boss.width/2, -boss.height/2 - 25, boss.width, 8);
+    ctx.fillStyle = "lime"; ctx.shadowBlur = 10; ctx.shadowColor = "lime"; ctx.fillRect(-boss.width/2, -boss.height/2 - 25, boss.width * hpPercent, 8);
     ctx.restore();
 
     if (boss.y < boss.targetY && !isPaused) {
-      ctx.save();
-      ctx.fillStyle = "red"; ctx.shadowBlur = 15; ctx.shadowColor = "red";
-      ctx.font = "bold 40px Orbitron"; ctx.textAlign = "center";
-      
-      // Scale font for mobile
+      ctx.save(); ctx.fillStyle = "red"; ctx.shadowBlur = 15; ctx.shadowColor = "red"; ctx.font = "bold 40px Orbitron"; ctx.textAlign = "center";
       if (c.width < 600) ctx.font = "bold 24px Orbitron";
-      
-      ctx.fillText("WARNING: SECTOR BOSS", c.width/2, c.height/2);
-      ctx.restore();
+      ctx.fillText("WARNING: SECTOR BOSS", c.width/2, c.height/2); ctx.restore();
     }
   }
 
@@ -486,7 +502,6 @@ function draw(){
     ctx.save(); ctx.translate(player.x, player.y); ctx.rotate(player.angle);
     ctx.shadowBlur = 15; ctx.shadowColor = "cyan"; ctx.fillStyle = "cyan";
     ctx.beginPath(); ctx.moveTo(15, 0); ctx.lineTo(-15, 15); ctx.lineTo(-5, 0); ctx.lineTo(-15, -15); ctx.closePath(); ctx.fill();
-
     if (!isPaused && Math.random() > 0.2) { 
       ctx.fillStyle = "orange"; ctx.shadowColor = "orange";
       ctx.beginPath(); ctx.moveTo(-5, 0); ctx.lineTo(-15, 5); ctx.lineTo(-15 - Math.random() * 15, 0); ctx.lineTo(-15, -5); ctx.closePath(); ctx.fill();
@@ -495,8 +510,5 @@ function draw(){
   }
 }
 
-function loop(){
-  update(); draw(); requestAnimationFrame(loop);
-}
-
+function loop(){ update(); draw(); requestAnimationFrame(loop); }
 loop();
