@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Stellar Strike</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="ui-layer">
+  <div id="hud">
+    <div class="health-wrapper">
+      <div class="health-label">SYSTEM INTEGRITY</div>
+      <div class="health-box"><div id="health-bar"></div></div>
+    </div>
+    <div class="stats-wrapper">
+      <div id="score-display">SCORE: 0</div>
+      <div id="level-display">LEVEL: 1</div>
+    </div>
+  </div>
+
+  <div id="main-menu" class="menu-screen">
+    <h1 class="title-cyan">STELLAR STRIKE</h1>
+    <button id="btn-play">INITIALIZE (PLAY)</button>
+    <button id="btn-settings-open">CONFIG (SETTINGS)</button>
+    <button id="btn-exit" class="btn-red">SHUTDOWN</button>
+  </div>
+
+  <div id="settings-menu" class="menu-screen">
+    <h1 class="title-cyan">CONFIG</h1>
+    <div class="setting-row">
+      <label>MUSIC: <span id="bgm-val">100%</span></label>
+      <input type="range" id="slider-bgm" min="0" max="100" value="100">
+    </div>
+    <div class="setting-row">
+      <label>SFX: <span id="sfx-val">100%</span></label>
+      <input type="range" id="slider-sfx" min="0" max="100" value="100">
+    </div>
+    <div class="setting-row">
+      <label>THREAT LEVEL:</label>
+      <div class="diff-group">
+        <button id="diff-easy" onclick="setDifficulty('easy')">CASUAL</button>
+        <button id="diff-normal" class="active-diff" onclick="setDifficulty('normal')">NORMAL</button>
+        <button id="diff-hard" onclick="setDifficulty('hard')">HARDCORE</button>
+      </div>
+    </div>
+    <button id="btn-settings-close">RETURN TO MENU</button>
+  </div>
+
+  <div id="pause-menu" class="menu-screen">
+    <h1>SYSTEM PAUSED</h1>
+    <button id="btn-resume">RESUME</button>
+    <button id="btn-quit" class="btn-red">ABORT MISSION</button>
+  </div>
+
+  <div id="game-over-screen" class="menu-screen">
+    <h1 class="title-red">CRITICAL FAILURE</h1>
+    <p>FINAL SCORE: <span id="final-score">0</span></p>
+    <button id="btn-restart" class="btn-red">REBOOT SYSTEM</button>
+  </div>
+</div>
+
+<div id="shutdown-screen">
+  <h1 class="title-red">SYSTEM TERMINATED.</h1>
+  <p style="color:white; font-family: monospace;">You may close this tab.</p>
+</div>
+
+<canvas id="c"></canvas>
+
+<script src="script.js"></script>
+</body>
+</html>

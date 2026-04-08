@@ -1,0 +1,71 @@
+body { 
+  margin: 0; overflow: hidden; background: black; 
+  cursor: crosshair; font-family: 'Orbitron', sans-serif; 
+  user-select: none; 
+  -webkit-touch-callout: none;
+  touch-action: none; 
+}
+canvas { display: block; touch-action: none; }
+
+/* UI OVERLAY STYLES */
+#ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+
+.menu-screen {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  text-align: center; background: rgba(10, 0, 0, 0.85); padding: 40px 60px;
+  border: 2px solid cyan; box-shadow: 0 0 30px cyan, inset 0 0 20px cyan;
+  pointer-events: auto; display: none; flex-direction: column; gap: 20px;
+  width: 80%; max-width: 400px; box-sizing: border-box;
+}
+
+h1 { font-size: 32px; margin: 0 0 10px 0; letter-spacing: 2px; }
+@media (min-width: 600px) { h1 { font-size: 48px; letter-spacing: 4px; } }
+
+.title-cyan { color: cyan; text-shadow: 0 0 15px cyan; }
+.title-red { color: red; text-shadow: 0 0 15px red; border-color: red; }
+
+/* Neon Buttons */
+button {
+  background: transparent; color: cyan; border: 2px solid cyan;
+  padding: 15px 20px; font-size: 16px; font-family: 'Orbitron', sans-serif;
+  cursor: pointer; box-shadow: 0 0 10px cyan, inset 0 0 5px cyan; text-shadow: 0 0 5px cyan; transition: all 0.2s;
+  width: 100%;
+}
+button:hover { background: cyan; color: black; box-shadow: 0 0 20px cyan, inset 0 0 10px cyan; }
+
+.btn-red { color: red; border-color: red; box-shadow: 0 0 10px red, inset 0 0 5px red; text-shadow: 0 0 5px red; }
+.btn-red:hover { background: red; color: black; box-shadow: 0 0 20px red, inset 0 0 10px red; }
+
+button.active-diff { background: cyan; color: black; box-shadow: 0 0 20px cyan, inset 0 0 10px cyan; }
+
+/* Settings Sliders & Rows */
+.setting-row { display: flex; flex-direction: column; text-align: left; gap: 10px; color: cyan; font-size: 12px; letter-spacing: 1px;}
+.diff-group { display: flex; gap: 5px; }
+.diff-group button { padding: 8px; font-size: 12px; }
+
+input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
+input[type=range]:focus { outline: none; }
+input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 8px; cursor: pointer; background: rgba(0,255,255,0.2); border: 1px solid cyan; box-shadow: 0 0 5px cyan; }
+input[type=range]::-webkit-slider-thumb { border: 2px solid cyan; height: 20px; width: 20px; border-radius: 50%; background: black; cursor: pointer; -webkit-appearance: none; margin-top: -7px; box-shadow: 0 0 10px cyan; }
+
+/* In-Game HUD */
+#hud { display: none; justify-content: space-between; padding: 15px 20px; }
+.health-wrapper { width: 40%; max-width: 250px; }
+.health-label { color: cyan; font-size: 12px; margin-bottom: 5px; letter-spacing: 1px; text-shadow: 0 0 5px cyan; }
+.health-box { width: 100%; height: 12px; border: 2px solid cyan; box-shadow: 0 0 10px cyan; background: rgba(0, 255, 255, 0.1); }
+#health-bar { width: 100%; height: 100%; background: cyan; box-shadow: 0 0 10px cyan; transition: width 0.2s ease-out, background-color 0.2s; }
+
+.stats-wrapper { text-align: right; }
+#score-display { color: white; font-size: 20px; font-weight: 700; text-shadow: 0 0 10px rgba(255, 255, 255, 0.8); letter-spacing: 1px; }
+#level-display { color: cyan; font-size: 14px; margin-top: 5px; letter-spacing: 1px; text-shadow: 0 0 5px cyan; }
+
+/* Menus */
+#main-menu { display: flex; border-color: cyan; }
+#pause-menu { border-color: yellow; box-shadow: 0 0 30px yellow, inset 0 0 20px yellow; }
+#pause-menu h1 { color: yellow; text-shadow: 0 0 15px yellow; }
+#pause-menu button { color: yellow; border-color: yellow; box-shadow: 0 0 10px yellow, inset 0 0 5px yellow; text-shadow: 0 0 5px yellow;}
+#pause-menu button:hover { background: yellow; color: black; box-shadow: 0 0 20px yellow, inset 0 0 10px yellow; }
+#game-over-screen { border-color: red; box-shadow: 0 0 30px red, inset 0 0 20px red; }
+#game-over-screen p { color: white; font-size: 16px; margin-bottom: 30px; }
+#final-score { color: yellow; font-weight: bold; }
+#shutdown-screen { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: black; color: red; flex-direction: column; justify-content: center; align-items: center; pointer-events: auto; z-index: 100;}
