@@ -15,6 +15,7 @@
       <div class="health-label">SYSTEM INTEGRITY</div>
       <div class="health-box"><div id="health-bar"></div></div>
     </div>
+    <button id="btn-pause-icon">⏸</button>
     <div class="stats-wrapper">
       <div id="score-display">SCORE: 0</div>
       <div id="level-display">LEVEL: 1</div>
@@ -39,6 +40,10 @@
       <input type="range" id="slider-sfx" min="0" max="100" value="100">
     </div>
     <div class="setting-row">
+      <label>SENSITIVITY: <span id="sens-val">100%</span></label>
+      <input type="range" id="slider-sens" min="20" max="250" value="100">
+    </div>
+    <div class="setting-row">
       <label>THREAT LEVEL:</label>
       <div class="diff-group">
         <button id="diff-easy" onclick="setDifficulty('easy')">CASUAL</button>
@@ -53,6 +58,13 @@
     <h1>SYSTEM PAUSED</h1>
     <button id="btn-resume">RESUME</button>
     <button id="btn-quit" class="btn-red">ABORT MISSION</button>
+  </div>
+
+  <div id="upgrade-screen" class="menu-screen" style="max-width: 600px;">
+    <h1 class="title-cyan">SYSTEM OVERRIDE</h1>
+    <p style="color: white; letter-spacing: 2px;">SELECT ONE AUGMENTATION:</p>
+    <div id="upgrade-options" class="upgrade-container">
+      </div>
   </div>
 
   <div id="game-over-screen" class="menu-screen">
