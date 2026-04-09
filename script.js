@@ -67,7 +67,7 @@ function playSound(type) {
 let mouse = {x:c.width/2, y:c.height/2};
 let firing = false; let inMenu = true; let isPaused = false; let gameOver = false; let inUpgradeMenu = false; let gameWon = false;
 let player, bullets, enemies, enemyBullets, stars, particles, powerups;
-let health, score, currentLevel; let bossActive = false; let boss = null;
+let health, score, currentLevel, nextBossScore; let bossActive = false; let boss = null;
 let joystick = { active: false, dx: 0, dy: 0, touchId: null };
 
 let playerStats = { maxHealth: 100, weaponLevel: 0, drones: 0, missiles: 0, tesla: 0, shields: 0 };
@@ -195,7 +195,7 @@ function startGame(){
   player = {x:c.width/2, y:c.height/2, angle:0};
   playerStats = { maxHealth: 100, weaponLevel: 0, drones: 0, missiles: 0, tesla: 0, shields: 0 }; 
   bullets = []; enemies = []; enemyBullets = []; particles = []; powerups = [];
-  health = 100; score = 0; currentLevel = 0; bossActive = false; boss = null; godMode = false;
+  health = 100; score = 0; currentLevel = 0; nextBossScore = 500; bossActive = false; boss = null; godMode = false;
   inMenu = false; isPaused = false; gameOver = false; gameWon = false; inUpgradeMenu = false;
 
   document.querySelector('#game-over-screen h1').innerText = "CRITICAL FAILURE";
@@ -208,7 +208,7 @@ function startGame(){
   updateUI(); if (audioCtx.state === 'suspended') audioCtx.resume(); startBGM(); applyDifficultyTimers();
 }
 
-function triggerLevelUp() { currentLevel++; applyDifficultyTimers(); updateUI(); }
+function triggerLevelUp() { currentLevel++; nextBossScore = score + 500 + (currentLevel * 200); applyDifficultyTimers(); updateUI(); }
 function returnToMenu() { inMenu = true; isPaused = false; Object.values(menus).forEach(m => m.style.display = 'none'); menus.main.style.display = "flex"; clearInterval(bgmInterval); isBgmPlaying = false; }
 function togglePause() {
   if(inMenu || gameOver || gameWon || inUpgradeMenu) return; isPaused = !isPaused;
@@ -433,8 +433,13 @@ function update(){
         boss.hp -= 0.1 * playerStats.tesla; 
         activeTeslaArcs.push({x: boss.x, y: boss.y});
         if (boss.hp <= 0) {
-            bossActive = false; score += 1000; playSound('explode'); triggerShake(60, 20); 
-            createExplosion(boss.x, boss.y, "magenta", 40, 3); createExplosion(boss.x, boss.y, "orange", 40, 4); boss = null;
+            bossActive = false; score += 100; playSound('explode'); triggerShake(60, 20); 
+            createExplosion(boss.x, boss.y, "magenta", 40, 3); createExplosion(boss.x, boss.y, "orange", 40, 4); 
+            
+            // DROP HEALTH POWER-UP
+            powerups.push({ x: boss.x, y: boss.y, radius: 15 });
+            
+            boss = null;
             if (currentLevel >= 9) triggerVictory(); else showUpgradeScreen();
         }
     }
@@ -446,8 +451,13 @@ function update(){
       if (b.x > boss.x - boss.width/2 && b.x < boss.x + boss.width/2 && b.y > boss.y - boss.height/2 && b.y < boss.y + boss.height/2) {
         boss.hp -= 10; playSound('bossHit'); createExplosion(b.x, b.y, "magenta", 3, 0.5); bullets.splice(i, 1);
         if (boss.hp <= 0) {
-          bossActive = false; score += 1000; playSound('explode'); triggerShake(60, 20); 
-          createExplosion(boss.x, boss.y, "magenta", 40, 3); createExplosion(boss.x, boss.y, "orange", 40, 4); boss = null; 
+          bossActive = false; score += 100; playSound('explode'); triggerShake(60, 20); 
+          createExplosion(boss.x, boss.y, "magenta", 40, 3); createExplosion(boss.x, boss.y, "orange", 40, 4); 
+          
+          // DROP HEALTH POWER-UP
+          powerups.push({ x: boss.x, y: boss.y, radius: 15 });
+          
+          boss = null; 
           if (currentLevel >= 9) triggerVictory(); else showUpgradeScreen(); 
           break;
         }
@@ -462,7 +472,12 @@ function update(){
             if (Math.hypot(boss.x - sx, boss.y - sy) < boss.width/2) { 
                 boss.hp -= 20; playerStats.shields--; createExplosion(sx, sy, "cyan", 15); playSound('hit'); triggerShake(10, 5);
                 if (boss.hp <= 0) {
-                    bossActive = false; score += 1000; playSound('explode'); triggerShake(60, 20); createExplosion(boss.x, boss.y, "magenta", 40, 3); createExplosion(boss.x, boss.y, "orange", 40, 4); boss = null; 
+                    bossActive = false; score += 100; playSound('explode'); triggerShake(60, 20); createExplosion(boss.x, boss.y, "magenta", 40, 3); createExplosion(boss.x, boss.y, "orange", 40, 4); 
+                    
+                    // DROP HEALTH POWER-UP
+                    powerups.push({ x: boss.x, y: boss.y, radius: 15 });
+                    
+                    boss = null; 
                     if (currentLevel >= 9) triggerVictory(); else showUpgradeScreen(); 
                 }
                 break; 
@@ -503,7 +518,7 @@ function update(){
                 if (e.hp <= 0) {
                     score += (e.type === 8 ? 50 : (e.type === 7 ? 40 : 10)); playSound('explode'); createExplosion(e.x, e.y, "orange", 10); createExplosion(e.x, e.y, "red", 5);
                     if (e.type === 7) { for(let k=0; k<3; k++) enemies.push({x: e.x + (Math.random()-0.5)*20, y: e.y + (Math.random()-0.5)*20, speed: e.speed*2, type: 0, tick: 0, hp: 1}); }
-                    if (score >= (currentLevel + 1) * 500 && !bossActive) spawnBoss(); else updateUI(); 
+                    if (score >= nextBossScore && !bossActive) spawnBoss(); else updateUI(); 
                     return false; 
                 }
                 break; 
