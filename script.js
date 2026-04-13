@@ -626,11 +626,10 @@ function draw(){
   particles.forEach(p => { ctx.globalAlpha = p.life; ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI*2); ctx.fill(); }); ctx.globalAlpha = 1.0;
 
   ctx.lineWidth = 4; ctx.lineCap = "round";
-  bullets.forEach(b=>{ ctx.shadowBlur = 10; ctx.shadowColor = b.color; ctx.strokeStyle = b.color; ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(b.x - b.dx*1.5, b.y - b.dy*1.5); ctx.stroke(); });
+  bullets.forEach(b=>{ ctx.strokeStyle = b.color; ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(b.x - b.dx*1.5, b.y - b.dy*1.5); ctx.stroke(); });
 
-  ctx.shadowBlur = 15;
-  enemyBullets.forEach(b=>{ ctx.shadowColor = b.glow; ctx.fillStyle = "white"; ctx.beginPath(); ctx.arc(b.x, b.y, 4, 0, Math.PI*2); ctx.fill(); });
-  ctx.globalCompositeOperation = "source-over"; ctx.shadowBlur = 0; 
+  enemyBullets.forEach(b=>{ ctx.fillStyle = "white"; ctx.beginPath(); ctx.arc(b.x, b.y, 4, 0, Math.PI*2); ctx.fill(); });
+  ctx.globalCompositeOperation = "source-over"; 
 
   if (activeTeslaArcs.length > 0) {
       ctx.strokeStyle = "cyan"; ctx.lineWidth = 2; ctx.shadowBlur = 10; ctx.shadowColor = "cyan";
