@@ -35,7 +35,7 @@ body::after {
   background: rgba(10, 0, 15, 0.7); 
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  padding: 30px 20px; /* REDUCED PADDING FOR MOBILE */
+  padding: 30px 10px; /* REDUCED PADDING FOR MOBILE */
   border: 2px solid cyan; 
   border-radius: 15px; 
   box-shadow: 0 0 40px rgba(0, 255, 255, 0.3), inset 0 0 20px rgba(0, 255, 255, 0.2);
@@ -68,7 +68,7 @@ button {
 button:hover { 
   background: cyan; color: black; 
   box-shadow: 0 0 30px cyan, inset 0 0 10px cyan; 
-  transform: scale(1.05); /* Button pops out when hovered */
+  transform: scale(1.02); /* Button pops out when hovered */
 }
 
 .btn-red { color: #ff3333; border-color: #ff3333; box-shadow: 0 0 10px red, inset 0 0 5px red; text-shadow: 0 0 5px red; }
@@ -76,12 +76,12 @@ button:hover {
 button.active-diff { background: cyan; color: black; box-shadow: 0 0 20px cyan, inset 0 0 10px cyan; transform: scale(1.05); }
 
 /* Settings Sliders & Rows */
-.setting-row { display: flex; flex-direction: column; text-align: left; gap: 10px; color: cyan; font-size: 13px; letter-spacing: 1.5px;}
+.setting-row { display: flex; flex-direction: column; text-align: left; gap: 10px; color: cyan; font-size: 11px; letter-spacing: 1.2px;}
 
 .diff-group { 
   display: flex; 
   gap: 10px; 
-  flex-wrap: wrap; /* MAGIC FIX: Allows buttons to drop to the next line if cramped */
+   /* MAGIC FIX: Allows buttons to drop to the next line if cramped */
   justify-content: center;
 }
 
@@ -172,7 +172,7 @@ input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); backgroun
   height: 50px;
   padding: 0;
   border-radius: 50%;
-  font-size: 22px;
+  font-size: 20px;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -237,4 +237,13 @@ input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); backgroun
   font-size: 12px;
   margin: 0;
   font-family: monospace;
+}
+
+.menu-screen::-webkit-scrollbar {
+  width: 0px;
+}
+
+.menu-screen::-webkit-scrollbar-thumb {
+  background: cyan;
+  border-radius: 10px;
 }
