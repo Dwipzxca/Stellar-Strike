@@ -3,7 +3,7 @@ const DEV_MODE = false;
 let godMode = false;
 
 // --- Configuration & State ---
-let bgmVolume = 1.0; let sfxVolume = 1.0; let joystickSensitivity = 1.0; 
+let bgmVolume = 5.0; let sfxVolume = 1.0; let joystickSensitivity = 1.0; 
 let difficulty = 'normal'; let spawnTimer, shootTimer; 
 const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 
@@ -70,7 +70,7 @@ let player, bullets, enemies, enemyBullets, stars, particles, powerups;
 let health, score, currentLevel, nextBossScore; let bossActive = false; let boss = null;
 let joystick = { active: false, dx: 0, dy: 0, touchId: null };
 
-let playerStats = { maxHealth: 100, weaponLevel: 0, drones: 0, missiles: 0, tesla: 0, shields: 0, inverted: false };
+let playerStats = { maxHealth: 500, weaponLevel: 0, drones: 0, missiles: 0, tesla: 0, shields: 0, inverted: false };
 let activeTeslaArcs = []; 
 const bossNames = ["GOLIATH CRUISER", "SWARM HIVE", "PULSAR STAR", "GEMINI SYSTEM", "NEXUS CORE", "VOID SINGULARITY", "PRISM WEAVER", "PHANTOM SWARM", "SIEGE ENGINE", "OMEGA ARCHON"];
 
@@ -140,7 +140,7 @@ function showUpgradeScreen() {
 function spawnBoss() {
   bossActive = true; clearInterval(spawnTimer);
   playSound('bossWarning'); setTimeout(() => playSound('bossWarning'), 1000); triggerShake(60, 5); 
-  let speedMod = difficulty === 'easy' ? 0.6 : (difficulty === 'normal' ? 1.0 : 1.5);
+  let speedMod = difficulty === 'easy' ? 0.6 : (difficulty === 'normal' ? 1.0 : 1.3);
   let bossMaxHp = 1000 + (currentLevel * 800); 
   
   // FIXED: Now properly cycles through ALL 10 bosses based on level
@@ -161,8 +161,8 @@ function applyDifficultyTimers() {
   clearInterval(spawnTimer); clearInterval(shootTimer);
   let baseSpawn = difficulty === 'easy' ? 2000 : (difficulty === 'normal' ? 1500 : 1000);
   let baseFire = difficulty === 'easy' ? 4000 : (difficulty === 'normal' ? 3000 : 2000);
-  let speedMod = difficulty === 'easy' ? 0.6 : (difficulty === 'normal' ? 1.0 : 1.5);
-  let levelMultiplier = Math.max(0.3, 1 - (currentLevel * 0.12));
+  let speedMod = difficulty === 'easy' ? 0.6 : (difficulty === 'normal' ? 1.0 : 1.2);
+  let levelMultiplier = Math.max(0.3, 1 - (currentLevel * 0.07));
 
   spawnTimer = setInterval(()=>{
     if(gameOver || gameWon || inMenu || isPaused || inUpgradeMenu || bossActive) return;
@@ -179,7 +179,7 @@ function applyDifficultyTimers() {
     let enemyHP = 1;
     if (selectedType === 4) enemyHP = 3; if (selectedType === 7) enemyHP = 5; if (selectedType === 8) enemyHP = 8;
 
-    let enemySpeed = (0.5 + (Math.random() * 0.5)) * speedMod * (1 + (currentLevel * 0.15));
+    let enemySpeed = (0.5 + (Math.random() * 0.5)) * speedMod * (1 + (currentLevel * 0.11));
     if (selectedType === 4 || selectedType === 7 || selectedType === 8) enemySpeed *= 0.5; 
     if (selectedType === 6) enemySpeed *= 1.4; 
     
@@ -192,7 +192,7 @@ function applyDifficultyTimers() {
       playSound('enemyShoot'); 
       enemies.forEach(e=>{
         if (e.type !== 8 && e.type !== 7) {
-            let centerX = e.x; let centerY = e.y; let a = Math.atan2(player.y - centerY, player.x - centerX); let bulletSpeed = 3.0 * speedMod; 
+            let centerX = e.x; let centerY = e.y; let a = Math.atan2(player.y - centerY, player.x - centerX); let bulletSpeed = 2.5 * speedMod; 
             enemyBullets.push({ x: centerX, y: centerY, dx: Math.cos(a)*bulletSpeed, dy: Math.sin(a)*bulletSpeed, glow: "orange" });
         }
       });
@@ -202,9 +202,9 @@ function applyDifficultyTimers() {
 
 function startGame(){
   player = {x:c.width/2, y:c.height/2, angle:0};
-  playerStats = { maxHealth: 100, weaponLevel: 0, drones: 0, missiles: 0, tesla: 0, shields: 0, inverted: false }; 
+  playerStats = { maxHealth: 200, weaponLevel: 0, drones: 0, missiles: 0, tesla: 0, shields: 0, inverted: false }; 
   bullets = []; enemies = []; enemyBullets = []; particles = []; powerups = [];
-  health = 100; score = 0; currentLevel = 0; nextBossScore = 500; bossActive = false; boss = null; godMode = false;
+  health = 200; score = 0; currentLevel = 0; nextBossScore = 500; bossActive = false; boss = null; godMode = false;
   inMenu = false; isPaused = false; gameOver = false; gameWon = false; inUpgradeMenu = false;
 
   document.querySelector('#game-over-screen h1').innerText = "CRITICAL FAILURE";
