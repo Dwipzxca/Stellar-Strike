@@ -1,5 +1,7 @@
+let unlockedLevel = parseInt(localStorage.getItem("unlockedLevel")) || 0;
+
 // --- DEV MODE SETTINGS ---
-const DEV_MODE = false; 
+const DEV_MODE = true; 
 let godMode = false;
 
 // --- Configuration & State ---
@@ -78,7 +80,7 @@ let shakeDuration = 0; let shakeIntensity = 0;
 function triggerShake(duration, intensity) { shakeDuration = duration; shakeIntensity = intensity; }
 
 function createExplosion(x, y, color, count, speedModifier = 1) {
-  let actualCount = Math.min(count, 30); 
+  let actualCount = Math.min(count, 10); 
   for(let i=0; i<actualCount; i++){
     let angle = Math.random() * Math.PI * 2; let speed = (Math.random() * 4 + 1) * speedModifier;
     particles.push({ x: x, y: y, dx: Math.cos(angle)*speed, dy: Math.sin(angle)*speed, radius: Math.random() * 3 + 1, color: color, life: 1.0, decay: Math.random() * 0.05 + 0.02 });
@@ -166,7 +168,9 @@ function applyDifficultyTimers() {
 
   spawnTimer = setInterval(()=>{
     if(gameOver || gameWon || inMenu || isPaused || inUpgradeMenu || bossActive) return;
-    if(enemies.length >= 25) return; 
+    if(enemies.length >= 25) {
+  enemies.shift(); // remove oldest enemy
+    }
 
     let side = Math.floor(Math.random()*4); let x,y;
     if(side===0){ x=Math.random()*c.width; y=-30; } else if(side===1){ x=Math.random()*c.width; y=c.height+30; } else if(side===2){ x=-30; y=Math.random()*c.height; } else { x=c.width+30; y=Math.random()*c.height; }
@@ -204,7 +208,7 @@ function startGame(){
   player = {x:c.width/2, y:c.height/2, angle:0};
   playerStats = { maxHealth: 200, weaponLevel: 0, drones: 0, missiles: 0, tesla: 0, shields: 0, inverted: false }; 
   bullets = []; enemies = []; enemyBullets = []; particles = []; powerups = [];
-  health = 200; score = 0; currentLevel = 0; nextBossScore = 500; bossActive = false; boss = null; godMode = false;
+  health = 200; score = 0; currentLevel = unlockedLevel; nextBossScore = 500; bossActive = false; boss = null; godMode = false;
   inMenu = false; isPaused = false; gameOver = false; gameWon = false; inUpgradeMenu = false;
 
   document.querySelector('#game-over-screen h1').innerText = "CRITICAL FAILURE";
@@ -387,7 +391,8 @@ function update(){
     if (b.isMissile) {
         let target = bossActive && boss ? boss : null;
         if (!target && enemies.length > 0) { target = enemies.reduce((closest, e) => (Math.hypot(e.x-b.x, e.y-b.y) < Math.hypot(closest.x-b.x, closest.y-b.y) ? e : closest), enemies[0]); }
-        if (target) { let angle = Math.atan2(target.y - b.y, target.x - b.x); b.dx += Math.cos(angle) * 0.8; b.dy += Math.sin(angle) * 0.8; let speed = Math.hypot(b.dx, b.dy); if (speed > 8) { b.dx = (b.dx/speed)*8; b.dy = (b.dy/speed)*8; } }
+        if (target) { let angle = Math.atan2(target.y - b.y, target.x - b.x); b.dx = (b.dx * 0.9) + Math.cos(angle) * 2;
+b.dy = (b.dy * 0.9) + Math.sin(angle) * 2; let speed = Math.hypot(b.dx, b.dy); if (speed > 8) { b.dx = (b.dx/speed)*8; b.dy = (b.dy/speed)*8; } }
         if(Math.random()>0.5) particles.push({x: b.x, y: b.y, dx: 0, dy: 0, radius: 1.5, color: "orange", life: 0.8, decay: 0.15}); 
     }
     b.x+=b.dx; b.y+=b.dy; return b.x>0 && b.x<c.width && b.y>0 && b.y<c.height; 
@@ -426,10 +431,10 @@ function update(){
       
       switch(boss.type) {
           case 0: // Goliath Cruiser 
-              if (boss.attackTimer > Math.max(30, 80 - currentLevel*5)) {
+              if (boss.attackTimer > Math.max(30, 100 - currentLevel*5)) {
                   boss.attackTimer = 0; playSound('enemyShoot');
                   [-0.2, 0, 0.2].forEach(off => enemyBullets.push({ x: boss.x - 60, y: boss.y, dx: Math.cos(a+off)*bs, dy: Math.sin(a+off)*bs, glow: "red" }));
-                  [-0.2, 0, 0.2].forEach(off => enemyBullets.push({ x: boss.x + 60, y: boss.y, dx: Math.cos(a+off)*bs, dy: Math.sin(a+off)*bs, glow: "red" }));
+                 
               }
               break;
           case 1: // Swarm Hive 
@@ -506,6 +511,10 @@ function update(){
           bossActive = false; score += 500; playSound('explode'); triggerShake(60, 20); 
           createExplosion(boss.x, boss.y, "magenta", 50, 4); createExplosion(boss.x, boss.y, "orange", 50, 5); 
           powerups.push({ x: boss.x, y: boss.y, radius: 15 }); 
+          if (currentLevel >= unlockedLevel) {
+          unlockedLevel = currentLevel + 1;
+          localStorage.setItem("unlockedLevel", unlockedLevel);
+}
           boss = null; triggerVictory(); 
       }
   }
@@ -632,7 +641,7 @@ function draw(){
   ctx.globalCompositeOperation = "source-over"; 
 
   if (activeTeslaArcs.length > 0) {
-      ctx.strokeStyle = "cyan"; ctx.lineWidth = 2; ctx.shadowBlur = 10; ctx.shadowColor = "cyan";
+      ctx.strokeStyle = "cyan"; ctx.lineWidth = 2; ctx.shadowBlur = 5; ctx.shadowColor = "cyan";
       activeTeslaArcs.forEach(arc => {
           ctx.beginPath(); ctx.moveTo(player.x, player.y);
           let mx = (player.x + arc.x)/2 + (Math.random()-0.5)*30; let my = (player.y + arc.y)/2 + (Math.random()-0.5)*30;
@@ -651,7 +660,7 @@ function draw(){
     else if (e.type === 8) { eGrad.addColorStop(0, "#880000"); eGrad.addColorStop(0.5, "#440000"); eGrad.addColorStop(1, "#110000"); ctx.shadowColor = "red"; ctx.strokeStyle = "#ff4444"; } 
     else { eGrad.addColorStop(0, "#ff4444"); eGrad.addColorStop(0.5, "#880000"); eGrad.addColorStop(1, "#330000"); ctx.shadowColor = "red"; ctx.strokeStyle = "#ffaaaa"; }
     
-    ctx.shadowBlur = 10; ctx.fillStyle = eGrad; ctx.lineWidth = 1.5; ctx.beginPath();
+    ctx.shadowBlur = 5; ctx.fillStyle = eGrad; ctx.lineWidth = 1.5; ctx.beginPath();
     if (e.type === 0) { ctx.moveTo(15, 0); ctx.lineTo(-10, 15); ctx.lineTo(-5, 0); ctx.lineTo(-10, -15); } 
     else if (e.type === 1) { ctx.moveTo(15, 0); ctx.lineTo(5, 15); ctx.lineTo(-15, 10); ctx.lineTo(-15, -10); ctx.lineTo(5, -15); } 
     else if (e.type === 2) { ctx.moveTo(10, 0); ctx.lineTo(-15, 20); ctx.lineTo(-10, 0); ctx.lineTo(-15, -20); } 
@@ -663,7 +672,7 @@ function draw(){
     else if (e.type === 8) { ctx.moveTo(25, 0); ctx.lineTo(-20, 20); ctx.lineTo(-15, 0); ctx.lineTo(-20, -20); } 
     
     ctx.closePath(); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = "white"; ctx.shadowColor = (e.type === 3 || e.type === 5) ? "#ff00ff" : "yellow"; ctx.shadowBlur = 10;
+    ctx.fillStyle = "white"; ctx.shadowColor = (e.type === 3 || e.type === 5) ? "#ff00ff" : "yellow"; ctx.shadowBlur = 5;
     ctx.beginPath(); ctx.arc(0, 0, 3, 0, Math.PI*2); ctx.fill(); ctx.restore();
   });
 
@@ -771,7 +780,7 @@ function draw(){
     
     // Boss Name & HP Bar
     if (boss.type === 2 || boss.type === 3 || boss.type === 9) ctx.rotate(-boss.angle); 
-    let hpPercent = Math.max(0, boss.hp / boss.maxHp); ctx.shadowBlur = 0; ctx.fillStyle = "rgba(255, 0, 0, 0.5)"; ctx.fillRect(-100, -110, 200, 6); ctx.fillStyle = "lime"; ctx.shadowBlur = 10; ctx.shadowColor = "lime"; ctx.fillRect(-100, -110, 200 * hpPercent, 6); 
+    let hpPercent = Math.max(0, boss.hp / boss.maxHp); ctx.shadowBlur = 0; ctx.fillStyle = "rgba(255, 0, 0, 0.5)"; ctx.fillRect(-100, -110, 200, 6); ctx.fillStyle = "lime"; ctx.shadowBlur = 5; ctx.shadowColor = "lime"; ctx.fillRect(-100, -110, 200 * hpPercent, 6); 
     
     if (boss.y < boss.targetY && !isPaused) { 
       ctx.save(); ctx.fillStyle = "red"; ctx.shadowBlur = 20; ctx.shadowColor = "red"; ctx.font = "bold 32px Orbitron"; ctx.textAlign = "center"; 
@@ -783,8 +792,8 @@ function draw(){
   }
 
   powerups.forEach(p => {
-    ctx.save(); ctx.translate(p.x, p.y); let pulse = Math.abs(Math.sin(Date.now() / 200)) * 5; ctx.shadowBlur = 15 + pulse; ctx.shadowColor = "lime"; ctx.fillStyle = "rgba(0, 255, 0, 0.2)"; ctx.strokeStyle = "lime"; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.arc(0, 0, p.radius, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.fillStyle = "lime"; ctx.shadowBlur = 10; ctx.fillRect(-2, -8, 4, 16); ctx.fillRect(-8, -2, 16, 4); ctx.restore();
+    ctx.save(); ctx.translate(p.x, p.y); let pulse = Math.abs(Math.sin(Date.now() / 200)) * 5; ctx.shadowBlur = 5 + pulse; ctx.shadowColor = "lime"; ctx.fillStyle = "rgba(0, 255, 0, 0.2)"; ctx.strokeStyle = "lime"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(0, 0, p.radius, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.fillStyle = "lime"; ctx.shadowBlur = 5; ctx.fillRect(-2, -8, 4, 16); ctx.fillRect(-8, -2, 16, 4); ctx.restore();
   });
   
   if(!gameOver && !gameWon) {
@@ -794,7 +803,7 @@ function draw(){
 
     for(let i=0; i<playerStats.drones; i++) {
         let da = (Date.now() / 500) + (Math.PI*2 / playerStats.drones) * i; let px = player.x + Math.cos(da)*40; let py = player.y + Math.sin(da)*40;
-        ctx.save(); ctx.translate(px, py); ctx.rotate(da); ctx.fillStyle = "#444"; ctx.shadowBlur = 10; ctx.shadowColor = "yellow"; ctx.strokeStyle = "yellow"; ctx.lineWidth = 2;
+        ctx.save(); ctx.translate(px, py); ctx.rotate(da); ctx.fillStyle = "#444"; ctx.shadowBlur = 5; ctx.shadowColor = "yellow"; ctx.strokeStyle = "yellow"; ctx.lineWidth = 2;
         ctx.beginPath(); ctx.arc(0, 0, 6, 0, Math.PI*2); ctx.fill(); ctx.stroke(); ctx.fillStyle = "white"; ctx.beginPath(); ctx.arc(0, 0, 2, 0, Math.PI*2); ctx.fill(); ctx.restore();
     }
 
