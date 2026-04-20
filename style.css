@@ -16,7 +16,7 @@ body::after {
   background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
   z-index: 100;
   background-size: 100% 3px, 3px 100%;
-  pointer-events: none; /* Lets you click through the overlay */
+  pointer-events: none;
 }
 
 /* UI OVERLAY STYLES */
@@ -35,12 +35,12 @@ body::after {
   background: rgba(10, 0, 15, 0.7); 
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  padding: 30px 10px; /* REDUCED PADDING FOR MOBILE */
+  padding: 30px 10px;
   border: 2px solid cyan; 
   border-radius: 15px; 
   box-shadow: 0 0 40px rgba(0, 255, 255, 0.3), inset 0 0 20px rgba(0, 255, 255, 0.2);
   pointer-events: auto; display: none; flex-direction: column; gap: 20px;
-  width: 90%; /* WIDER ON MOBILE */
+  width: 90%;
   max-width: 450px; box-sizing: border-box;
   animation: float 4s ease-in-out infinite;
   pointer-events: auto;
@@ -68,7 +68,7 @@ button {
 button:hover { 
   background: cyan; color: black; 
   box-shadow: 0 0 30px cyan, inset 0 0 10px cyan; 
-  transform: scale(1.02); /* Button pops out when hovered */
+  transform: scale(1.02);
 }
 
 .btn-red { color: #ff3333; border-color: #ff3333; box-shadow: 0 0 10px red, inset 0 0 5px red; text-shadow: 0 0 5px red; }
@@ -81,14 +81,13 @@ button.active-diff { background: cyan; color: black; box-shadow: 0 0 20px cyan, 
 .diff-group { 
   display: flex; 
   gap: 10px; 
-   /* MAGIC FIX: Allows buttons to drop to the next line if cramped */
   justify-content: center;
 }
 
 .diff-group button { 
   padding: 10px 5px; 
   font-size: 12px; 
-  flex-grow: 1; /* Makes the buttons stretch to fill the row beautifully */
+  flex-grow: 1;
   min-width: 80px;
 }
 input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
@@ -180,12 +179,10 @@ input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); backgroun
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   z-index: 100;
-  
-  /* THE FIXES: */
-  pointer-events: auto; /* Makes the button clickable again! */
-  cursor: pointer; /* Gives you the hand cursor on hover */
-  font-family: Arial, sans-serif; /* Uses a standard font so the symbol centers perfectly */
-  line-height: 1; /* Removes extra invisible spacing around the icon */
+  pointer-events: auto;
+  cursor: pointer;
+  font-family: Arial, sans-serif;
+  line-height: 1;
 }
 
 #btn-pause-icon:hover {
@@ -246,4 +243,163 @@ input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); backgroun
 .menu-screen::-webkit-scrollbar-thumb {
   background: cyan;
   border-radius: 10px;
+}
+
+/* ===================================================
+   LEVEL SELECT SCREEN
+   =================================================== */
+
+#level-select-menu {
+  max-width: 680px;
+}
+
+.level-select-subtitle {
+  color: rgba(0, 255, 255, 0.6);
+  font-size: 11px;
+  letter-spacing: 3px;
+  margin: -10px 0 5px 0;
+}
+
+/* Grid: 2 cols on mobile, 5 cols on desktop */
+.level-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  width: 100%;
+}
+
+@media (min-width: 500px) {
+  .level-grid {
+    grid-template-columns: repeat(5, 1fr);
+  }
+}
+
+/* Base level card */
+.level-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 14px 8px;
+  border-radius: 10px;
+  border: 2px solid cyan;
+  background: rgba(0, 255, 255, 0.05);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 0 10px rgba(0, 255, 255, 0.2);
+  min-height: 90px;
+  position: relative;
+  overflow: hidden;
+}
+
+.level-card:hover {
+  background: rgba(0, 255, 255, 0.15);
+  box-shadow: 0 0 25px cyan, inset 0 0 10px rgba(0, 255, 255, 0.2);
+  transform: scale(1.05);
+}
+
+/* Level number badge */
+.level-card .lc-num {
+  font-size: 22px;
+  font-weight: 700;
+  color: cyan;
+  text-shadow: 0 0 10px cyan;
+  line-height: 1;
+}
+
+/* Boss name label */
+.level-card .lc-boss {
+  font-size: 8px;
+  letter-spacing: 1px;
+  color: rgba(255, 255, 255, 0.7);
+  text-align: center;
+  line-height: 1.3;
+  font-family: monospace;
+  text-transform: uppercase;
+}
+
+/* ---- LOCKED state ---- */
+.level-card.locked {
+  cursor: not-allowed;
+  border-color: rgba(0, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.4);
+  box-shadow: none;
+  opacity: 0.5;
+}
+
+.level-card.locked:hover {
+  transform: none;
+  background: rgba(0, 0, 0, 0.4);
+  box-shadow: none;
+}
+
+.level-card.locked .lc-num {
+  color: #444;
+  text-shadow: none;
+}
+
+.level-card.locked .lc-boss {
+  color: #333;
+}
+
+.level-card.locked .lc-lock {
+  font-size: 18px;
+  opacity: 0.4;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+/* ---- CURRENT (highest unlocked) highlight ---- */
+.level-card.current-level {
+  border-color: gold;
+  box-shadow: 0 0 20px gold, inset 0 0 10px rgba(255, 215, 0, 0.2);
+  animation: goldPulse 1.5s ease-in-out infinite;
+}
+
+.level-card.current-level .lc-num {
+  color: gold;
+  text-shadow: 0 0 10px gold;
+}
+
+.level-card.current-level .lc-badge {
+  font-size: 8px;
+  color: gold;
+  letter-spacing: 1px;
+  background: rgba(255, 215, 0, 0.15);
+  border: 1px solid gold;
+  border-radius: 4px;
+  padding: 2px 5px;
+  font-family: monospace;
+}
+
+@keyframes goldPulse {
+  0%   { box-shadow: 0 0 15px gold, inset 0 0 8px rgba(255, 215, 0, 0.1); }
+  50%  { box-shadow: 0 0 35px gold, inset 0 0 20px rgba(255, 215, 0, 0.3); }
+  100% { box-shadow: 0 0 15px gold, inset 0 0 8px rgba(255, 215, 0, 0.1); }
+}
+
+/* ---- COMPLETED levels (already beaten) ---- */
+.level-card.completed {
+  border-color: rgba(0, 255, 0, 0.6);
+  box-shadow: 0 0 8px rgba(0, 255, 0, 0.3);
+}
+
+.level-card.completed .lc-num {
+  color: lime;
+  text-shadow: 0 0 8px lime;
+}
+
+.level-card.completed::after {
+  content: "✓";
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  font-size: 10px;
+  color: lime;
+  text-shadow: 0 0 5px lime;
+  font-family: Arial, sans-serif;
 }

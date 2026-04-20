@@ -1,7 +1,7 @@
 let unlockedLevel = parseInt(localStorage.getItem("unlockedLevel")) || 0;
 
 // --- DEV MODE SETTINGS ---
-const DEV_MODE = true; 
+const DEV_MODE = false; 
 let godMode = false;
 
 // --- Configuration & State ---
@@ -18,7 +18,8 @@ const menus = {
   main: document.getElementById('main-menu'), settings: document.getElementById('settings-menu'),
   pause: document.getElementById('pause-menu'), gameOver: document.getElementById('game-over-screen'),
   hud: document.getElementById('hud'), shutdown: document.getElementById('shutdown-screen'),
-  mobileControls: document.getElementById('mobile-controls'), upgrade: document.getElementById('upgrade-screen')
+  mobileControls: document.getElementById('mobile-controls'), upgrade: document.getElementById('upgrade-screen'),
+  levelSelect: document.getElementById('level-select-menu')
 };
 
 // UI Handlers
@@ -139,13 +140,57 @@ function showUpgradeScreen() {
   });
 }
 
+// ============================================================
+//  LEVEL SELECT  — shows all 10 zones with locked/unlocked state
+// ============================================================
+function showLevelSelect() {
+  // Refresh unlockedLevel from storage in case it changed
+  unlockedLevel = parseInt(localStorage.getItem("unlockedLevel")) || 0;
+
+  menus.main.style.display = "none";
+  menus.levelSelect.style.display = "flex";
+
+  const grid = document.getElementById('level-grid');
+  grid.innerHTML = '';
+
+  const TOTAL_LEVELS = 10;
+
+  for (let i = 0; i < TOTAL_LEVELS; i++) {
+    const card = document.createElement('div');
+    const isUnlocked = i <= unlockedLevel;
+    const isCompleted = i < unlockedLevel;
+    const isCurrent  = i === unlockedLevel;
+
+    if (isUnlocked) {
+      card.className = 'level-card' + (isCurrent ? ' current-level' : ' completed');
+      card.innerHTML = `
+        <span class="lc-num">${i + 1}</span>
+        <span class="lc-boss">${bossNames[i % bossNames.length]}</span>
+        ${isCurrent ? '<span class="lc-badge">► NEXT</span>' : ''}
+      `;
+      card.addEventListener('click', () => {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        startGame(i);
+      });
+    } else {
+      card.className = 'level-card locked';
+      card.innerHTML = `
+        <span class="lc-num" style="opacity:0.2">${i + 1}</span>
+        <span class="lc-boss">???</span>
+        <span class="lc-lock">🔒</span>
+      `;
+    }
+
+    grid.appendChild(card);
+  }
+}
+
 function spawnBoss() {
   bossActive = true; clearInterval(spawnTimer);
   playSound('bossWarning'); setTimeout(() => playSound('bossWarning'), 1000); triggerShake(60, 5); 
   let speedMod = difficulty === 'easy' ? 0.6 : (difficulty === 'normal' ? 1.0 : 1.3);
   let bossMaxHp = 1000 + (currentLevel * 800); 
   
-  // FIXED: Now properly cycles through ALL 10 bosses based on level
   let bossType = currentLevel % 10; 
   
   boss = { 
@@ -169,7 +214,7 @@ function applyDifficultyTimers() {
   spawnTimer = setInterval(()=>{
     if(gameOver || gameWon || inMenu || isPaused || inUpgradeMenu || bossActive) return;
     if(enemies.length >= 25) {
-  enemies.shift(); // remove oldest enemy
+      enemies.shift();
     }
 
     let side = Math.floor(Math.random()*4); let x,y;
@@ -204,11 +249,15 @@ function applyDifficultyTimers() {
   }, baseFire * levelMultiplier);
 }
 
-function startGame(){
+// selectedLevel = which level index (0-based) to start on
+function startGame(selectedLevel) {
+  // selectedLevel can be a number from level select, or called without args from restart
+  let startLevel = (typeof selectedLevel === 'number') ? selectedLevel : 0;
+
   player = {x:c.width/2, y:c.height/2, angle:0};
   playerStats = { maxHealth: 200, weaponLevel: 0, drones: 0, missiles: 0, tesla: 0, shields: 0, inverted: false }; 
   bullets = []; enemies = []; enemyBullets = []; particles = []; powerups = [];
-  health = 200; score = 0; currentLevel = unlockedLevel; nextBossScore = 500; bossActive = false; boss = null; godMode = false;
+  health = 200; score = 0; currentLevel = startLevel; nextBossScore = 500 + (startLevel * 200); bossActive = false; boss = null; godMode = false;
   inMenu = false; isPaused = false; gameOver = false; gameWon = false; inUpgradeMenu = false;
 
   document.querySelector('#game-over-screen h1').innerText = "CRITICAL FAILURE";
@@ -233,7 +282,6 @@ function triggerGameOver() {
   menus.hud.style.display = "none"; menus.mobileControls.style.display = "none"; menus.gameOver.style.display = "flex"; clearInterval(bgmInterval); isBgmPlaying = false; 
 }
 function triggerVictory() {
-  // Infinite looping! Show upgrades, then next level.
   showUpgradeScreen();
 }
 
@@ -254,7 +302,20 @@ function updateUI() {
 }
 
 // --- Inputs & Dev Commands ---
-document.getElementById('btn-play').addEventListener('click', startGame); document.getElementById('btn-restart').addEventListener('click', startGame); document.getElementById('btn-resume').addEventListener('click', togglePause); document.getElementById('btn-quit').addEventListener('click', returnToMenu);
+// PLAY now opens the level select screen
+document.getElementById('btn-play').addEventListener('click', showLevelSelect);
+// Back button in level select returns to main menu
+document.getElementById('btn-level-back').addEventListener('click', () => {
+  menus.levelSelect.style.display = "none";
+  menus.main.style.display = "flex";
+});
+// Restart sends the player back to level select too, so they can pick where to go
+document.getElementById('btn-restart').addEventListener('click', () => {
+  menus.gameOver.style.display = "none";
+  showLevelSelect();
+});
+document.getElementById('btn-resume').addEventListener('click', togglePause); 
+document.getElementById('btn-quit').addEventListener('click', returnToMenu);
 document.getElementById('btn-pause-icon').addEventListener('click', togglePause);
 
 window.addEventListener("keydown", (e) => { 
@@ -295,7 +356,7 @@ setInterval(()=>{
   let a = Math.atan2(mouse.y-player.y, mouse.x-player.x);
   if (joystick.active && (joystick.dx !== 0 || joystick.dy !== 0)) {
       let inv = playerStats.inverted ? -1 : 1;
-      a = Math.atan2(joystick.dy * inv, joystick.dx * inv); // Use joystick angle if active
+      a = Math.atan2(joystick.dy * inv, joystick.dx * inv);
   }
   
   if (playerStats.weaponLevel === 0) { bullets.push({ x: player.x, y: player.y, dx: Math.cos(a)*12, dy: Math.sin(a)*12, color: "lime", isMissile: false }); } 
@@ -354,7 +415,7 @@ function update(){
     if(p.life <= 0) particles.splice(i, 1);
   }
 
-  // PLAYER MOVEMENT (INCLUDES INVERTED LOGIC FOR BOSS 10)
+  // PLAYER MOVEMENT
   let inv = playerStats.inverted ? -1 : 1;
   if (joystick.active) {
     let speed = 7 * joystickSensitivity; 
@@ -418,7 +479,7 @@ b.dy = (b.dy * 0.9) + Math.sin(angle) * 2; let speed = Math.hypot(b.dx, b.dy); i
     return b.x>0 && b.x<c.width && b.y>0 && b.y<c.height;
   });
 
-  // --- ALL 10 BOSS MECHANICS ARE HERE ---
+  // --- ALL 10 BOSS MECHANICS ---
   if (bossActive && boss) {
     if (boss.y < boss.targetY) { boss.y += 1.5; } 
     else {
@@ -434,7 +495,6 @@ b.dy = (b.dy * 0.9) + Math.sin(angle) * 2; let speed = Math.hypot(b.dx, b.dy); i
               if (boss.attackTimer > Math.max(30, 100 - currentLevel*5)) {
                   boss.attackTimer = 0; playSound('enemyShoot');
                   [-0.2, 0, 0.2].forEach(off => enemyBullets.push({ x: boss.x - 60, y: boss.y, dx: Math.cos(a+off)*bs, dy: Math.sin(a+off)*bs, glow: "red" }));
-                 
               }
               break;
           case 1: // Swarm Hive 
@@ -466,7 +526,7 @@ b.dy = (b.dy * 0.9) + Math.sin(angle) * 2; let speed = Math.hypot(b.dx, b.dy); i
           case 4: // Nexus Core 
               if (boss.attackTimer > Math.max(12, 40 - currentLevel*3)) {
                   boss.attackTimer = 0; playSound('enemyShoot');
-                  boss.spiral = (boss.spiral || 0) + 0.3;
+                  boss.spiral += 0.3;
                   for(let i=0; i<6; i++) {
                       let sa = boss.spiral + (Math.PI/3)*i;
                       enemyBullets.push({ x: boss.x, y: boss.y, dx: Math.cos(sa)*bs*0.8, dy: Math.sin(sa)*bs*0.8, glow: "magenta" });
@@ -478,7 +538,7 @@ b.dy = (b.dy * 0.9) + Math.sin(angle) * 2; let speed = Math.hypot(b.dx, b.dy); i
               if (dist < 400 && !godMode) { player.x += (boss.x - player.x) * 0.015; player.y += (boss.y - player.y) * 0.015; }
               if (boss.attackTimer > 30) { boss.attackTimer = 0; let sa = Math.random()*Math.PI*2; enemyBullets.push({x: boss.x, y: boss.y, dx: Math.cos(sa)*bs, dy: Math.sin(sa)*bs, glow: "white"}); }
               break;
-          case 6: // Prism Weaver (REFRACTION LOGIC IS IN DAMAGEBOSS)
+          case 6: // Prism Weaver
               if (boss.attackTimer > 50) { boss.attackTimer = 0; for(let i=0; i<8; i++) { let sa = (Math.PI/4)*i; enemyBullets.push({x: boss.x, y: boss.y, dx: Math.cos(sa)*bs, dy: Math.sin(sa)*bs, glow: "lime"}); } }
               break;
           case 7: // Phantom Swarm (STEALTH)
@@ -488,7 +548,8 @@ b.dy = (b.dy * 0.9) + Math.sin(angle) * 2; let speed = Math.hypot(b.dx, b.dy); i
           case 8: // Siege Engine (TRANSFORMING BEAM)
               if (boss.attackTimer > 200) { boss.attackTimer = 0; boss.state = boss.state === 0 ? 1 : 0; }
               if (boss.state === 1) {
-                  if (player.x > boss.x - 40 && player.x < boss.x + 40 && !godMode) { health -= 1; triggerShake(5, 2); updateUI(); }
+                  // Fixed: add cooldown so beam doesn't insta-kill
+                  if (boss.attackTimer % 6 === 0 && player.x > boss.x - 40 && player.x < boss.x + 40 && !godMode) { health -= 1; triggerShake(5, 2); updateUI(); }
               } else {
                   if (boss.attackTimer % 20 === 0) enemyBullets.push({x: boss.x, y: boss.y, dx: Math.cos(a)*bs, dy: Math.sin(a)*bs, glow: "orange"});
               }
@@ -501,28 +562,10 @@ b.dy = (b.dy * 0.9) + Math.sin(angle) * 2; let speed = Math.hypot(b.dx, b.dy); i
     }
   }
 
-  function damageBoss(amount, impactX, impactY) {
-      if (!boss) return;
-      // REFRACTION FOR BOSS 6
-      if (boss.type === 6) { enemyBullets.push({ x: impactX, y: impactY, dx: (Math.random()-0.5)*6, dy: 4, glow: "lime" }); }
-      
-      boss.hp -= amount; 
-      if (boss.hp <= 0) {
-          bossActive = false; score += 500; playSound('explode'); triggerShake(60, 20); 
-          createExplosion(boss.x, boss.y, "magenta", 50, 4); createExplosion(boss.x, boss.y, "orange", 50, 5); 
-          powerups.push({ x: boss.x, y: boss.y, radius: 15 }); 
-          if (currentLevel >= unlockedLevel) {
-          unlockedLevel = currentLevel + 1;
-          localStorage.setItem("unlockedLevel", unlockedLevel);
-}
-          boss = null; triggerVictory(); 
-      }
-  }
-
+  // Moved damageBoss OUTSIDE of update() inner scope — defined at module level below
   if (playerStats.tesla > 0 && boss) {
     let range = 80 + (playerStats.tesla * 20); 
     if (Math.hypot(boss.x - player.x, boss.y - player.y) < range) {
-      if (!boss) return;
         activeTeslaArcs.push({x: boss.x, y: boss.y});
         damageBoss(0.1 * playerStats.tesla, boss.x, boss.y);
     }
@@ -599,9 +642,16 @@ b.dy = (b.dy * 0.9) + Math.sin(angle) * 2; let speed = Math.hypot(b.dx, b.dy); i
                 score += (e.type === 8 ? 50 : (e.type === 7 ? 40 : 10)); playSound('explode'); createExplosion(e.x, e.y, "orange", 10); createExplosion(e.x, e.y, "cyan", 5);
                 if (e.type === 7) { for(let k=0; k<3; k++) enemies.push({x: e.x + (Math.random()-0.5)*20, y: e.y + (Math.random()-0.5)*20, speed: e.speed*2, type: 0, tick: 0, hp: 1}); }
                 if (score >= nextBossScore && !bossActive) spawnBoss(); else updateUI(); 
-                return false; 
+                return false;
             }
         }
+    }
+
+    if( Math.hypot(e.x - player.x, e.y - player.y) < 20 ) {
+        if (!godMode) health -= 20; playSound('hit'); triggerShake(10, 5); createExplosion(player.x, player.y, "cyan", 8); updateUI();
+        if (e.type === 7) { for(let k=0; k<3; k++) enemies.push({x: e.x + (Math.random()-0.5)*20, y: e.y + (Math.random()-0.5)*20, speed: e.speed*2, type: 0, tick: 0, hp: 1}); }
+        if (score >= nextBossScore && !bossActive) spawnBoss(); else updateUI(); 
+        return false; 
     }
 
     for(let i = bullets.length - 1; i >= 0; i--){
@@ -621,6 +671,23 @@ b.dy = (b.dy * 0.9) + Math.sin(angle) * 2; let speed = Math.hypot(b.dx, b.dy); i
   });
 
   if(health <= 0 && !gameOver && !gameWon && !godMode) triggerGameOver(); 
+}
+
+// damageBoss is now a top-level function (not nested inside update every frame)
+function damageBoss(amount, impactX, impactY) {
+    if (!boss) return;
+    if (boss.type === 6) { enemyBullets.push({ x: impactX, y: impactY, dx: (Math.random()-0.5)*6, dy: 4, glow: "lime" }); }
+    boss.hp -= amount; 
+    if (boss.hp <= 0) {
+        bossActive = false; score += 500; playSound('explode'); triggerShake(60, 20); 
+        createExplosion(boss.x, boss.y, "magenta", 50, 4); createExplosion(boss.x, boss.y, "orange", 50, 5); 
+        powerups.push({ x: boss.x, y: boss.y, radius: 15 }); 
+        if (currentLevel >= unlockedLevel) {
+            unlockedLevel = currentLevel + 1;
+            localStorage.setItem("unlockedLevel", unlockedLevel);
+        }
+        boss = null; triggerVictory(); 
+    }
 }
 
 function draw(){
@@ -680,7 +747,6 @@ function draw(){
   if (bossActive && boss) {
     ctx.save(); ctx.translate(boss.x, boss.y);
     
-    // Spin Pulsar and Gemini and Archon
     if (boss.type === 2 || boss.type === 3 || boss.type === 9) { ctx.rotate(boss.angle); }
     
     let bGrad = ctx.createLinearGradient(0, -boss.height/2, 0, boss.height/2); 
@@ -719,11 +785,11 @@ function draw(){
 
         case 3: // Gemini System
             ctx.shadowBlur = 20; ctx.lineWidth = 3;
-            ctx.strokeStyle = "rgba(255,255,255,0.5)"; ctx.beginPath(); ctx.moveTo(-60, 0); ctx.lineTo(60, 0); ctx.stroke(); // Tether
+            ctx.strokeStyle = "rgba(255,255,255,0.5)"; ctx.beginPath(); ctx.moveTo(-60, 0); ctx.lineTo(60, 0); ctx.stroke();
             ctx.fillStyle = "#331100"; ctx.strokeStyle = "#ff8800"; ctx.shadowColor = "#ff8800";
-            ctx.beginPath(); ctx.arc(-60, 0, 40, Math.PI/2, Math.PI*1.5); ctx.quadraticCurveTo(-20, 0, -60, Math.PI/2); ctx.fill(); ctx.stroke(); // Left
+            ctx.beginPath(); ctx.arc(-60, 0, 40, Math.PI/2, Math.PI*1.5); ctx.quadraticCurveTo(-20, 0, -60, Math.PI/2); ctx.fill(); ctx.stroke();
             ctx.fillStyle = "#110033"; ctx.strokeStyle = "#8a2be2"; ctx.shadowColor = "#8a2be2";
-            ctx.beginPath(); ctx.arc(60, 0, 40, Math.PI*1.5, Math.PI/2); ctx.quadraticCurveTo(20, 0, 60, Math.PI*1.5); ctx.fill(); ctx.stroke(); // Right
+            ctx.beginPath(); ctx.arc(60, 0, 40, Math.PI*1.5, Math.PI/2); ctx.quadraticCurveTo(20, 0, 60, Math.PI*1.5); ctx.fill(); ctx.stroke();
             break;
 
         case 4: // Nexus Core
@@ -738,8 +804,8 @@ function draw(){
             break;
             
         case 5: // Void Singularity
-            let p = Math.abs(Math.sin(Date.now()/300))*20; 
-            ctx.fillStyle="black"; ctx.shadowColor="white"; ctx.shadowBlur=20+p; 
+            let p5 = Math.abs(Math.sin(Date.now()/300))*20; 
+            ctx.fillStyle="black"; ctx.shadowColor="white"; ctx.shadowBlur=20+p5; 
             ctx.beginPath(); ctx.arc(0,0,40,0,Math.PI*2); ctx.fill(); 
             ctx.lineWidth=3; ctx.strokeStyle="white"; ctx.stroke(); 
             ctx.beginPath(); ctx.arc(0,0,80,0,Math.PI*2); ctx.strokeStyle="rgba(255,255,255,0.2)"; ctx.stroke();
@@ -765,7 +831,7 @@ function draw(){
             ctx.fillRect(-60,-40,120,80); ctx.strokeRect(-60,-40,120,80); 
             if(boss.state===1){ 
                 ctx.fillStyle="rgba(255,100,0,0.6)"; ctx.shadowBlur=50;
-                ctx.fillRect(-45, 0, 90, 1000); // Massive Beam
+                ctx.fillRect(-45, 0, 90, 1000);
                 ctx.fillStyle="white"; ctx.fillRect(-20, 0, 40, 1000); 
             } 
             break;
@@ -773,7 +839,7 @@ function draw(){
         case 9: // Omega Archon
             ctx.fillStyle="rgba(255, 215, 0, 0.2)"; ctx.strokeStyle="gold"; ctx.shadowColor="gold"; ctx.shadowBlur=30; ctx.lineWidth=4;
             ctx.strokeRect(-60,-60,120,120); ctx.fillRect(-60,-60,120,120);
-            ctx.rotate(Math.PI/4); // Inner diamond
+            ctx.rotate(Math.PI/4);
             ctx.strokeRect(-40,-40,80,80); ctx.fillStyle="white"; ctx.fillRect(-15,-15,30,30);
             break;
     }
