@@ -18,7 +18,16 @@
     <button id="btn-pause-icon">⏸</button>
     <div class="stats-wrapper">
       <div id="score-display">SCORE: 0</div>
+      <div id="highscore-display">BEST: 0</div>
       <div id="level-display">LEVEL: 1</div>
+      <div id="coin-display">⬡ 0 CREDITS</div>
+      <div class="boss-incoming-wrapper">
+        <div class="boss-incoming-label">BOSS INCOMING</div>
+        <div class="boss-incoming-box">
+          <div id="boss-progress-bar"></div>
+        </div>
+        <div id="boss-score-display">0 / 500</div>
+      </div>
     </div>
   </div>
 
@@ -53,6 +62,22 @@
       <input type="range" id="slider-sens" min="20" max="250" value="100">
     </div>
     <div class="setting-row">
+      <label>GUI SCALE: <span id="gui-val">100%</span></label>
+      <input type="range" id="slider-gui" min="50" max="150" value="100">
+    </div>
+    <div class="setting-row">
+      <label>FOV SCALE: <span id="fov-val">100%</span></label>
+      <input type="range" id="slider-fov" min="50" max="200" value="100">
+    </div>
+    <div class="setting-row">
+      <label>POST PROCESSING:</label>
+      <div class="diff-group">
+        <button id="toggle-scanlines" class="active-diff toggle-btn" onclick="toggleFX('scanlines')">SCANLINES</button>
+        <button id="toggle-bloom" class="active-diff toggle-btn" onclick="toggleFX('bloom')">BLOOM</button>
+        <button id="toggle-shake" class="active-diff toggle-btn" onclick="toggleFX('shake')">SHAKE</button>
+      </div>
+    </div>
+    <div class="setting-row">
       <label>THREAT LEVEL:</label>
       <div class="diff-group">
         <button id="diff-easy" onclick="setDifficulty('easy')">CASUAL</button>
@@ -79,6 +104,7 @@
   <div id="game-over-screen" class="menu-screen">
     <h1 class="title-red">CRITICAL FAILURE</h1>
     <p>FINAL SCORE: <span id="final-score">0</span></p>
+    <p style="color:gold; font-size:14px; letter-spacing:2px; margin:0;">BEST: <span id="go-highscore">0</span></p>
     <button id="btn-restart" class="btn-red">REBOOT SYSTEM</button>
   </div>
 

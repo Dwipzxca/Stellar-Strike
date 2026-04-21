@@ -5,7 +5,8 @@ const DEV_MODE = true;
 let godMode = false;
 
 // --- Configuration & State ---
-let bgmVolume = 5.0; let sfxVolume = 1.0; let joystickSensitivity = 1.0; 
+let bgmVolume = 5.0; let sfxVolume = 1.0; let joystickSensitivity = 1.0; let guiScale = 1.0; let fovScale = 1.0;
+let postFX = { scanlines: true, bloom: true, shake: true };
 let difficulty = 'normal'; let spawnTimer, shootTimer; 
 const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 
@@ -29,6 +30,43 @@ document.getElementById('btn-exit').addEventListener('click', () => { menus.main
 document.getElementById('slider-bgm').addEventListener('input', (e) => { bgmVolume = e.target.value / 100; document.getElementById('bgm-val').innerText = e.target.value + "%"; });
 document.getElementById('slider-sfx').addEventListener('input', (e) => { sfxVolume = e.target.value / 100; document.getElementById('sfx-val').innerText = e.target.value + "%"; });
 document.getElementById('slider-sens').addEventListener('input', (e) => { joystickSensitivity = e.target.value / 100; document.getElementById('sens-val').innerText = e.target.value + "%"; });
+document.getElementById('slider-gui').addEventListener('input', (e) => {
+  guiScale = e.target.value / 100;
+  document.getElementById('gui-val').innerText = e.target.value + "%";
+  document.getElementById('ui-layer').style.transform = `scale(${guiScale})`;
+  document.getElementById('ui-layer').style.transformOrigin = 'top left';
+  document.getElementById('ui-layer').style.width = `${100 / guiScale}%`;
+  document.getElementById('ui-layer').style.height = `${100 / guiScale}%`;
+});
+
+document.getElementById('slider-fov').addEventListener('input', (e) => {
+  fovScale = e.target.value / 100;
+  document.getElementById('fov-val').innerText = e.target.value + "%";
+  // Scale the canvas visually from center — simulates zooming the game view
+  c.style.transform = `scale(${fovScale})`;
+  c.style.transformOrigin = 'center center';
+  c.style.position = 'fixed';
+  c.style.top = '50%';
+  c.style.left = '50%';
+  c.style.translate = '-50% -50%';
+});
+
+function toggleFX(type) {
+  postFX[type] = !postFX[type];
+  const btn = document.getElementById('toggle-' + type);
+  btn.classList.toggle('active-diff', postFX[type]);
+
+  if (type === 'scanlines') {
+    document.body.classList.toggle('no-scanlines', !postFX.scanlines);
+  }
+  if (type === 'bloom') {
+    c.classList.toggle('bloom-on', postFX.bloom);
+  }
+  // 'shake' is read directly from postFX.shake inside triggerShake()
+}
+
+// Init bloom on by default
+c.classList.add('bloom-on');
 
 function setDifficulty(level) {
   difficulty = level;
@@ -64,13 +102,14 @@ function playSound(type) {
   else if (type === 'levelup') { osc.type = 'square'; osc.frequency.setValueAtTime(440, now); osc.frequency.setValueAtTime(554, now + 0.1); osc.frequency.setValueAtTime(659, now + 0.2); gainNode.gain.setValueAtTime(0.1 * sfxVolume, now); gainNode.gain.linearRampToValueAtTime(0, now + 0.4); osc.start(now); osc.stop(now + 0.4); } 
   else if (type === 'bossWarning') { osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, now); osc.frequency.linearRampToValueAtTime(150, now + 0.5); osc.frequency.linearRampToValueAtTime(100, now + 1.0); gainNode.gain.setValueAtTime(0.15 * sfxVolume, now); gainNode.gain.linearRampToValueAtTime(0, now + 1.0); osc.start(now); osc.stop(now + 1.0); } 
   else if (type === 'bossHit') { osc.type = 'square'; osc.frequency.setValueAtTime(80, now); osc.frequency.exponentialRampToValueAtTime(20, now + 0.1); gainNode.gain.setValueAtTime(0.2 * sfxVolume, now); gainNode.gain.exponentialRampToValueAtTime(0.01 * sfxVolume, now + 0.1); osc.start(now); osc.stop(now + 0.1); }
+  else if (type === 'coin') { osc.type = 'sine'; osc.frequency.setValueAtTime(1047, now); osc.frequency.setValueAtTime(1319, now + 0.06); gainNode.gain.setValueAtTime(0.07 * sfxVolume, now); gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.18); gainNode.gain.linearRampToValueAtTime(0, now + 0.2); osc.start(now); osc.stop(now + 0.2); }
 }
 
 // --- Game State Variables ---
 let mouse = {x:c.width/2, y:c.height/2};
 let firing = false; let inMenu = true; let isPaused = false; let gameOver = false; let inUpgradeMenu = false; let gameWon = false;
-let player, bullets, enemies, enemyBullets, stars, particles, powerups;
-let health, score, currentLevel, nextBossScore; let bossActive = false; let boss = null;
+let player, bullets, enemies, enemyBullets, stars, particles, powerups, coinPickups;
+let health, score, coins, currentLevel, nextBossScore; let bossActive = false; let boss = null;
 let joystick = { active: false, dx: 0, dy: 0, touchId: null };
 
 let playerStats = { maxHealth: 500, weaponLevel: 0, drones: 0, missiles: 0, tesla: 0, shields: 0, inverted: false };
@@ -78,7 +117,7 @@ let activeTeslaArcs = [];
 const bossNames = ["GOLIATH CRUISER", "SWARM HIVE", "PULSAR STAR", "GEMINI SYSTEM", "NEXUS CORE", "VOID SINGULARITY", "PRISM WEAVER", "PHANTOM SWARM", "SIEGE ENGINE", "OMEGA ARCHON"];
 
 let shakeDuration = 0; let shakeIntensity = 0;
-function triggerShake(duration, intensity) { shakeDuration = duration; shakeIntensity = intensity; }
+function triggerShake(duration, intensity) { if (!postFX.shake) return; shakeDuration = duration; shakeIntensity = intensity; }
 
 function createExplosion(x, y, color, count, speedModifier = 1) {
   let actualCount = Math.min(count, 10); 
@@ -86,6 +125,40 @@ function createExplosion(x, y, color, count, speedModifier = 1) {
     let angle = Math.random() * Math.PI * 2; let speed = (Math.random() * 4 + 1) * speedModifier;
     particles.push({ x: x, y: y, dx: Math.cos(angle)*speed, dy: Math.sin(angle)*speed, radius: Math.random() * 3 + 1, color: color, life: 1.0, decay: Math.random() * 0.05 + 0.02 });
   }
+}
+
+// --- Coin Drop System ---
+// Drop chances: tough enemies (type 7,8) = 50%; medium (type 4,5) = 30%; normal = 15%
+function dropCoins(x, y, enemyType) {
+  let chance, minVal, maxVal;
+  if (enemyType === 7 || enemyType === 8)      { chance = 0.50; minVal = 5; maxVal = 8; }
+  else if (enemyType === 4 || enemyType === 5) { chance = 0.30; minVal = 2; maxVal = 4; }
+  else                                          { chance = 0.15; minVal = 1; maxVal = 2; }
+  if (Math.random() < chance) {
+    let value = minVal + Math.floor(Math.random() * (maxVal - minVal + 1));
+    coinPickups.push({ x: x + (Math.random()-0.5)*20, y: y, value: value, radius: 8, dy: 1.2 + Math.random()*0.6 });
+  }
+}
+
+// Drop a scatter of coin pickups when a boss dies — total value scales with level
+function dropBossCoins(bx, by, level) {
+  let totalValue = 50 + Math.floor(level * 5.5); // 50 at L0 → ~99 at L9
+  let numPickups = 6 + level;                     // 6 → 15 coins on screen
+  let perCoin = Math.max(1, Math.floor(totalValue / numPickups));
+  for (let i = 0; i < numPickups; i++) {
+    let angle = Math.random() * Math.PI * 2;
+    let dist = 20 + Math.random() * 110;
+    coinPickups.push({ x: bx + Math.cos(angle)*dist, y: by + Math.sin(angle)*dist, value: perCoin, radius: 10, dy: 0.8 + Math.random()*1.2 });
+  }
+}
+
+function spawnCoinPopup(x, y, value) {
+  let el = document.createElement('div');
+  el.className = 'coin-popup';
+  el.innerText = '+' + value + '⬡';
+  el.style.left = x + 'px'; el.style.top = y + 'px';
+  document.getElementById('ui-layer').appendChild(el);
+  setTimeout(() => el.remove(), 900);
 }
 
 stars = [];
@@ -256,8 +329,8 @@ function startGame(selectedLevel) {
 
   player = {x:c.width/2, y:c.height/2, angle:0};
   playerStats = { maxHealth: 200, weaponLevel: 0, drones: 0, missiles: 0, tesla: 0, shields: 0, inverted: false }; 
-  bullets = []; enemies = []; enemyBullets = []; particles = []; powerups = [];
-  health = 200; score = 0; currentLevel = startLevel; nextBossScore = 500 + (startLevel * 200); bossActive = false; boss = null; godMode = false;
+  bullets = []; enemies = []; enemyBullets = []; particles = []; powerups = []; coinPickups = [];
+  health = 200; score = 0; coins = 0; currentLevel = startLevel; nextBossScore = 500 + (startLevel * 200); bossActive = false; boss = null; godMode = false;
   inMenu = false; isPaused = false; gameOver = false; gameWon = false; inUpgradeMenu = false;
 
   document.querySelector('#game-over-screen h1').innerText = "CRITICAL FAILURE";
@@ -277,8 +350,11 @@ function togglePause() {
   if (isPaused) { menus.pause.style.display = "flex"; if(audioCtx.state === 'running') audioCtx.suspend(); } else { menus.pause.style.display = "none"; if(audioCtx.state === 'suspended') audioCtx.resume(); }
 }
 function triggerGameOver() {
-  gameOver = true; document.getElementById('final-score').innerText = score; triggerShake(30, 10);
+  gameOver = true; triggerShake(30, 10);
+  let highScore = parseInt(localStorage.getItem("highScore")) || 0;
+  if (score > highScore) { highScore = score; localStorage.setItem("highScore", highScore); }
   document.querySelector('#game-over-screen p').innerHTML = `FINAL SCORE: <span id="final-score" style="color:yellow; font-weight:bold; font-size:24px;">${score}</span>`;
+  document.getElementById('go-highscore').innerText = highScore;
   menus.hud.style.display = "none"; menus.mobileControls.style.display = "none"; menus.gameOver.style.display = "flex"; clearInterval(bgmInterval); isBgmPlaying = false; 
 }
 function triggerVictory() {
@@ -286,7 +362,28 @@ function triggerVictory() {
 }
 
 function updateUI() {
-  document.getElementById('score-display').innerText = "SCORE: " + score; document.getElementById('level-display').innerText = "LEVEL: " + (currentLevel + 1);
+  document.getElementById('score-display').innerText = "SCORE: " + score; 
+  document.getElementById('level-display').innerText = "LEVEL: " + (currentLevel + 1);
+  document.getElementById('coin-display').innerText = "⬡ " + coins + " CREDITS";
+
+  // High score
+  let highScore = parseInt(localStorage.getItem("highScore")) || 0;
+  if (score > highScore) { highScore = score; localStorage.setItem("highScore", highScore); }
+  document.getElementById('highscore-display').innerText = "BEST: " + highScore;
+
+  // Boss progress bar
+  let prevBossScore = nextBossScore - (500 + (currentLevel * 200));
+  let progressScore = score - prevBossScore;
+  let rangeScore = nextBossScore - prevBossScore;
+  let bossPercent = bossActive ? 100 : Math.min(100, Math.max(0, (progressScore / rangeScore) * 100));
+  document.getElementById('boss-progress-bar').style.width = bossPercent + "%";
+  document.getElementById('boss-score-display').innerText = bossActive ? "BOSS ACTIVE!" : (score + " / " + nextBossScore);
+  // Flash red when close
+  let bossWrapper = document.querySelector('.boss-incoming-label');
+  if (bossPercent >= 80 && !bossActive) { bossWrapper.style.color = "#ff0000"; bossWrapper.style.textShadow = "0 0 12px red"; }
+  else if (bossActive) { bossWrapper.style.color = "#ff8800"; bossWrapper.style.textShadow = "0 0 12px orange"; bossWrapper.innerText = "⚠ BOSS ACTIVE"; }
+  else { bossWrapper.innerText = "BOSS INCOMING"; bossWrapper.style.color = "#ff4444"; bossWrapper.style.textShadow = "0 0 6px red"; }
+
   let healthPercent = Math.max(0, (health / playerStats.maxHealth) * 100); 
   let hBar = document.getElementById('health-bar'); let hBox = document.querySelector('.health-box'); let hLabel = document.querySelector('.health-label');
   hBar.style.width = healthPercent + "%"; hBox.classList.remove('health-critical');
@@ -446,6 +543,25 @@ function update(){
         health = Math.min(playerStats.maxHealth, health + 50); updateUI(); playSound('levelup'); createExplosion(p.x, p.y, "lime", 15, 2); powerups.splice(i, 1); continue;
     }
     if (p.y > c.height + 30) powerups.splice(i, 1);
+  }
+
+  // Coin pickup collection
+  for (let i = coinPickups.length - 1; i >= 0; i--) {
+    let cp = coinPickups[i];
+    cp.y += cp.dy;
+    // Slight magnetic attraction when close
+    let cpDist = Math.hypot(player.x - cp.x, player.y - cp.y);
+    if (cpDist < 80) { cp.x += (player.x - cp.x) * 0.08; cp.y += (player.y - cp.y) * 0.08; }
+    if (cpDist < cp.radius + 15) {
+      coins += cp.value;
+      playSound('coin');
+      createExplosion(cp.x, cp.y, "gold", 5, 1.5);
+      spawnCoinPopup(cp.x, cp.y, cp.value);
+      updateUI();
+      coinPickups.splice(i, 1);
+      continue;
+    }
+    if (cp.y > c.height + 30) coinPickups.splice(i, 1);
   }
   
   bullets = bullets.filter(b=>{
@@ -625,6 +741,7 @@ b.dy = (b.dy * 0.9) + Math.sin(angle) * 2; let speed = Math.hypot(b.dx, b.dy); i
                 e.hp -= 5; playerStats.shields--; createExplosion(sx, sy, "cyan", 10); playSound('hit'); triggerShake(5, 3);
                 if (e.hp <= 0) {
                     score += (e.type === 8 ? 50 : (e.type === 7 ? 40 : 10)); playSound('explode'); createExplosion(e.x, e.y, "orange", 10); createExplosion(e.x, e.y, "red", 5);
+                    dropCoins(e.x, e.y, e.type);
                     if (e.type === 7) { for(let k=0; k<3; k++) enemies.push({x: e.x + (Math.random()-0.5)*20, y: e.y + (Math.random()-0.5)*20, speed: e.speed*2, type: 0, tick: 0, hp: 1}); }
                     if (score >= nextBossScore && !bossActive) spawnBoss(); else updateUI(); 
                     return false; 
@@ -640,6 +757,7 @@ b.dy = (b.dy * 0.9) + Math.sin(angle) * 2; let speed = Math.hypot(b.dx, b.dy); i
             e.hp -= 0.05 * playerStats.tesla; activeTeslaArcs.push({x: e.x, y: e.y});
             if (e.hp <= 0) {
                 score += (e.type === 8 ? 50 : (e.type === 7 ? 40 : 10)); playSound('explode'); createExplosion(e.x, e.y, "orange", 10); createExplosion(e.x, e.y, "cyan", 5);
+                dropCoins(e.x, e.y, e.type);
                 if (e.type === 7) { for(let k=0; k<3; k++) enemies.push({x: e.x + (Math.random()-0.5)*20, y: e.y + (Math.random()-0.5)*20, speed: e.speed*2, type: 0, tick: 0, hp: 1}); }
                 if (score >= nextBossScore && !bossActive) spawnBoss(); else updateUI(); 
                 return false;
@@ -661,6 +779,7 @@ b.dy = (b.dy * 0.9) + Math.sin(angle) * 2; let speed = Math.hypot(b.dx, b.dy); i
         if (e.hp <= 0) {
             score += (e.type === 8 ? 50 : (e.type === 7 ? 40 : 10)); playSound('explode'); triggerShake(e.type === 8 ? 10 : 5, e.type === 8 ? 4 : 2); 
             createExplosion(e.x, e.y, "orange", 10); createExplosion(e.x, e.y, "red", 5);
+            dropCoins(e.x, e.y, e.type);
             if (e.type === 7) { for(let k=0; k<3; k++) enemies.push({x: e.x + (Math.random()-0.5)*20, y: e.y + (Math.random()-0.5)*20, speed: e.speed*2, type: 0, tick: 0, hp: 1}); } 
             if (score >= nextBossScore && !bossActive) spawnBoss(); else updateUI(); 
             return false; 
@@ -681,7 +800,8 @@ function damageBoss(amount, impactX, impactY) {
     if (boss.hp <= 0) {
         bossActive = false; score += 500; playSound('explode'); triggerShake(60, 20); 
         createExplosion(boss.x, boss.y, "magenta", 50, 4); createExplosion(boss.x, boss.y, "orange", 50, 5); 
-        powerups.push({ x: boss.x, y: boss.y, radius: 15 }); 
+        powerups.push({ x: boss.x, y: boss.y, radius: 15 });
+        dropBossCoins(boss.x, boss.y, currentLevel);
         if (currentLevel >= unlockedLevel) {
             unlockedLevel = currentLevel + 1;
             localStorage.setItem("unlockedLevel", unlockedLevel);
@@ -860,6 +980,35 @@ function draw(){
   powerups.forEach(p => {
     ctx.save(); ctx.translate(p.x, p.y); let pulse = Math.abs(Math.sin(Date.now() / 200)) * 5; ctx.shadowBlur = 5 + pulse; ctx.shadowColor = "lime"; ctx.fillStyle = "rgba(0, 255, 0, 0.2)"; ctx.strokeStyle = "lime"; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.arc(0, 0, p.radius, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.fillStyle = "lime"; ctx.shadowBlur = 5; ctx.fillRect(-2, -8, 4, 16); ctx.fillRect(-8, -2, 16, 4); ctx.restore();
+  });
+
+  // --- Draw Coin Pickups ---
+  coinPickups.forEach(cp => {
+    ctx.save();
+    ctx.translate(cp.x, cp.y);
+    let cpPulse = Math.abs(Math.sin(Date.now() / 250)) * 4;
+    // Outer glow ring
+    ctx.shadowBlur = 12 + cpPulse;
+    ctx.shadowColor = "gold";
+    ctx.strokeStyle = "#ffd700";
+    ctx.lineWidth = 2;
+    ctx.fillStyle = "rgba(255, 215, 0, 0.15)";
+    ctx.beginPath(); ctx.arc(0, 0, cp.radius + cpPulse * 0.5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    // Coin body
+    ctx.shadowBlur = 6;
+    ctx.fillStyle = "#ffd700";
+    ctx.beginPath(); ctx.arc(0, 0, cp.radius - 2, 0, Math.PI * 2); ctx.fill();
+    // Inner shine
+    ctx.fillStyle = "#fff8a0";
+    ctx.beginPath(); ctx.arc(-2, -2, (cp.radius - 2) * 0.45, 0, Math.PI * 2); ctx.fill();
+    // Credit symbol
+    ctx.fillStyle = "#886600";
+    ctx.shadowBlur = 0;
+    ctx.font = "bold " + Math.floor(cp.radius * 1.2) + "px Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("⬡", 0, 1);
+    ctx.restore();
   });
   
   if(!gameOver && !gameWon) {
