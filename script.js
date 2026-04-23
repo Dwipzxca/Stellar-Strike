@@ -1,5 +1,15 @@
 let unlockedLevel = parseInt(localStorage.getItem("unlockedLevel")) || 0;
 
+// --- Persistent Shop Data ---
+let coins = parseInt(localStorage.getItem("coins")) || 0;
+let shopData = JSON.parse(localStorage.getItem("shopData")) || {
+  weaponLevel: 0, hullPlating: 0, drones: 0, missiles: 0, shields: 0
+};
+function saveProgress() {
+  localStorage.setItem("coins", coins);
+  localStorage.setItem("shopData", JSON.stringify(shopData));
+}
+
 // --- DEV MODE SETTINGS ---
 const DEV_MODE = true; 
 let godMode = false;
@@ -19,7 +29,7 @@ const menus = {
   main: document.getElementById('main-menu'), settings: document.getElementById('settings-menu'),
   pause: document.getElementById('pause-menu'), gameOver: document.getElementById('game-over-screen'),
   hud: document.getElementById('hud'), shutdown: document.getElementById('shutdown-screen'),
-  mobileControls: document.getElementById('mobile-controls'), upgrade: document.getElementById('upgrade-screen'),
+  mobileControls: document.getElementById('mobile-controls'), shop: document.getElementById('shop-menu'),
   levelSelect: document.getElementById('level-select-menu')
 };
 
@@ -27,6 +37,8 @@ const menus = {
 document.getElementById('btn-settings-open').addEventListener('click', () => { menus.main.style.display = "none"; menus.settings.style.display = "flex"; });
 document.getElementById('btn-settings-close').addEventListener('click', () => { menus.settings.style.display = "none"; menus.main.style.display = "flex"; });
 document.getElementById('btn-exit').addEventListener('click', () => { menus.main.style.display = "none"; menus.shutdown.style.display = "flex"; });
+document.getElementById('btn-shop-open').addEventListener('click', showShop);
+document.getElementById('btn-shop-close').addEventListener('click', () => { menus.shop.style.display = "none"; menus.main.style.display = "flex"; });
 document.getElementById('slider-bgm').addEventListener('input', (e) => { bgmVolume = e.target.value / 100; document.getElementById('bgm-val').innerText = e.target.value + "%"; });
 document.getElementById('slider-sfx').addEventListener('input', (e) => { sfxVolume = e.target.value / 100; document.getElementById('sfx-val').innerText = e.target.value + "%"; });
 document.getElementById('slider-sens').addEventListener('input', (e) => { joystickSensitivity = e.target.value / 100; document.getElementById('sens-val').innerText = e.target.value + "%"; });
@@ -109,7 +121,7 @@ function playSound(type) {
 let mouse = {x:c.width/2, y:c.height/2};
 let firing = false; let inMenu = true; let isPaused = false; let gameOver = false; let inUpgradeMenu = false; let gameWon = false;
 let player, bullets, enemies, enemyBullets, stars, particles, powerups, coinPickups;
-let health, score, coins, currentLevel, nextBossScore; let bossActive = false; let boss = null;
+let health, score, currentLevel, nextBossScore; let bossActive = false; let boss = null;
 let joystick = { active: false, dx: 0, dy: 0, touchId: null };
 
 let playerStats = { maxHealth: 500, weaponLevel: 0, drones: 0, missiles: 0, tesla: 0, shields: 0, inverted: false };
@@ -164,52 +176,124 @@ function spawnCoinPopup(x, y, value) {
 stars = [];
 for (let i = 0; i < 150; i++) { stars.push({ x: Math.random() * c.width, y: Math.random() * c.height, size: Math.random() * 2.5 + 0.5, speed: Math.random() * 2 + 0.1, color: Math.random() > 0.8 ? '#44aaff' : '#ffffff' }); }
 
-const upgrades = [
-  { id: 'heal', name: 'SYSTEM REPAIR', desc: 'Restores 50 Hull Integrity.', weight: 100, action: () => { health = Math.min(playerStats.maxHealth, health + 50); } },
-  { id: 'maxhp', name: 'HULL PLATING', desc: 'Increases Maximum HP by 25.', weight: 80, action: () => { playerStats.maxHealth += 25; health += 25; } },
-  { id: 'drone', name: 'COMBAT DRONE', desc: 'Adds an orbiting drone. (Max 2)', weight: 20, action: () => { playerStats.drones++; } },
-  { id: 'missile', name: 'SWARM MISSILES', desc: 'Periodically launches missiles. (Max 3)', weight: 20, action: () => { playerStats.missiles++; } },
-  { id: 'tesla', name: 'TESLA COIL', desc: 'Zaps nearby enemies. (Max 2)', weight: 15, action: () => { playerStats.tesla++; } },
-  { id: 'shield', name: 'ORBITAL SHIELD', desc: 'Blocks bullets. Shatters if rammed!', weight: 20, action: () => { playerStats.shields++; } },
-  { id: 'wep1', name: 'TWIN BLASTER', desc: 'Fires 2 parallel lasers.', weight: 50, reqWep: 0, action: () => { playerStats.weaponLevel = 1; } },
-  { id: 'wep2', name: 'TRIPLE BURST', desc: 'Fires 3 lasers in a wide arc.', weight: 15, reqWep: 1, action: () => { playerStats.weaponLevel = 2; } },
-  { id: 'wep3', name: 'PLASMA FAN', desc: 'Fires 5 lasers. Overwhelming firepower.', weight: 2, reqWep: 2, action: () => { playerStats.weaponLevel = 3; } }
+// ============================================================
+//  SHOP SYSTEM — persistent upgrades bought between runs
+// ============================================================
+const shopItems = [
+  // ── WEAPONS (sequential unlock) ──────────────────────────
+  { id: 'wep1', category: 'WEAPONS', icon: '⚡', name: 'TWIN BLASTER',
+    desc: 'Fires 2 parallel lasers simultaneously.',
+    price: 60,
+    owned: () => shopData.weaponLevel >= 1,
+    canBuy: () => shopData.weaponLevel === 0,
+    buy: () => { shopData.weaponLevel = 1; }
+  },
+  { id: 'wep2', category: 'WEAPONS', icon: '⚡⚡', name: 'TRIPLE BURST',
+    desc: 'Fires 3 lasers in a wide spread arc.',
+    price: 180,
+    owned: () => shopData.weaponLevel >= 2,
+    canBuy: () => shopData.weaponLevel === 1,
+    buy: () => { shopData.weaponLevel = 2; }
+  },
+  { id: 'wep3', category: 'WEAPONS', icon: '🔥', name: 'PLASMA FAN',
+    desc: '5 lasers. Overwhelming suppressive fire.',
+    price: 450,
+    owned: () => shopData.weaponLevel >= 3,
+    canBuy: () => shopData.weaponLevel === 2,
+    buy: () => { shopData.weaponLevel = 3; }
+  },
+  // ── HULL ─────────────────────────────────────────────────
+  { id: 'hull', category: 'HULL', icon: '🛡', name: 'HULL PLATING',
+    desc: '+50 Max Hull Integrity. Stackable x5.',
+    price: 40,
+    owned: () => shopData.hullPlating >= 5,
+    canBuy: () => shopData.hullPlating < 5,
+    buy: () => { shopData.hullPlating++; },
+    count: () => `${shopData.hullPlating} / 5`
+  },
+  // ── SYSTEMS ──────────────────────────────────────────────
+  { id: 'drone', category: 'SYSTEMS', icon: '🤖', name: 'COMBAT DRONE',
+    desc: 'Orbiting drone that auto-targets enemies.',
+    price: 100,
+    owned: () => shopData.drones >= 2,
+    canBuy: () => shopData.drones < 2,
+    buy: () => { shopData.drones++; },
+    count: () => `${shopData.drones} / 2`
+  },
+  { id: 'missile', category: 'SYSTEMS', icon: '🚀', name: 'SWARM MISSILES',
+    desc: 'Periodically launches homing missiles.',
+    price: 75,
+    owned: () => shopData.missiles >= 3,
+    canBuy: () => shopData.missiles < 3,
+    buy: () => { shopData.missiles++; },
+    count: () => `${shopData.missiles} / 3`
+  },
+  { id: 'shield', category: 'SYSTEMS', icon: '💠', name: 'ORBITAL SHIELD',
+    desc: 'Orbiting orb that blocks enemy bullets.',
+    price: 120,
+    owned: () => shopData.shields >= 3,
+    canBuy: () => shopData.shields < 3,
+    buy: () => { shopData.shields++; },
+    count: () => `${shopData.shields} / 3`
+  },
 ];
 
-function showUpgradeScreen() {
-  inUpgradeMenu = true; menus.upgrade.style.display = "flex"; menus.hud.style.display = "none";
-  if (isTouchDevice) menus.mobileControls.style.display = "none";
+function showShop() {
+  menus.main.style.display = "none";
+  menus.shop.style.display = "flex";
+  renderShop();
+}
 
-  let validUpgrades = upgrades.filter(u => {
-    if (u.reqWep !== undefined && playerStats.weaponLevel !== u.reqWep) return false;
-    if (u.id === 'drone' && playerStats.drones >= 2) return false; 
-    if (u.id === 'missile' && playerStats.missiles >= 3) return false;
-    if (u.id === 'tesla' && playerStats.tesla >= 2) return false;
-    if (u.id === 'shield' && playerStats.shields >= 3) return false;
-    return true;
-  });
+function renderShop() {
+  const container = document.getElementById('shop-items');
+  container.innerHTML = '';
+  document.getElementById('shop-coins').innerText = "⬡ " + coins + " CREDITS";
 
-  let choices = [];
-  for(let i=0; i<3; i++) {
-    if (validUpgrades.length === 0) break;
-    let totalWeight = validUpgrades.reduce((sum, u) => sum + u.weight, 0);
-    let r = Math.random() * totalWeight; let sum = 0;
-    for(let j=0; j<validUpgrades.length; j++) {
-      sum += validUpgrades[j].weight;
-      if (r <= sum) { choices.push(validUpgrades[j]); validUpgrades.splice(j, 1); break; }
-    }
-  }
+  const categories = ['WEAPONS', 'HULL', 'SYSTEMS'];
+  categories.forEach(cat => {
+    let header = document.createElement('div');
+    header.className = 'shop-category-header';
+    header.innerText = '── ' + cat + ' ──';
+    container.appendChild(header);
 
-  const container = document.getElementById('upgrade-options'); container.innerHTML = '';
-  choices.forEach(choice => {
-    let btn = document.createElement('div'); btn.className = 'upgrade-card';
-    btn.innerHTML = `<h3 class="title-cyan">${choice.name}</h3><p>${choice.desc}</p>`;
-    btn.onclick = () => {
-      choice.action(); playSound('levelup'); inUpgradeMenu = false;
-      menus.upgrade.style.display = "none"; menus.hud.style.display = "flex";
-      if (isTouchDevice) menus.mobileControls.style.display = "flex"; triggerLevelUp(); 
-    };
-    container.appendChild(btn);
+    shopItems.filter(item => item.category === cat).forEach(item => {
+      let card = document.createElement('div');
+      let isOwned = item.owned();
+      let canAfford = coins >= item.price;
+      let canBuy = item.canBuy();
+      card.className = 'shop-card' + (isOwned ? ' shop-owned' : (!canBuy ? ' shop-locked' : ''));
+
+      let statusLabel = isOwned
+        ? `<span class="shop-status owned">INSTALLED</span>`
+        : (!canBuy
+            ? `<span class="shop-status locked">LOCKED</span>`
+            : `<span class="shop-status available">${item.price} ⬡</span>`);
+
+      let countBadge = item.count ? `<span class="shop-count">${item.count()}</span>` : '';
+
+      card.innerHTML = `
+        <div class="shop-card-icon">${item.icon}</div>
+        <div class="shop-card-body">
+          <div class="shop-card-name">${item.name} ${countBadge}</div>
+          <div class="shop-card-desc">${item.desc}</div>
+        </div>
+        <div class="shop-card-action">
+          ${statusLabel}
+          ${(!isOwned && canBuy) ? `<button class="shop-buy-btn${canAfford ? '' : ' cant-afford'}" ${canAfford ? '' : 'disabled'}>BUY</button>` : ''}
+        </div>`;
+
+      if (!isOwned && canBuy && canAfford) {
+        card.querySelector('.shop-buy-btn').addEventListener('click', (e) => {
+          e.stopPropagation();
+          coins -= item.price;
+          item.buy();
+          saveProgress();
+          renderShop();
+          playSound('levelup');
+        });
+      }
+      container.appendChild(card);
+    });
   });
 }
 
@@ -324,14 +408,26 @@ function applyDifficultyTimers() {
 
 // selectedLevel = which level index (0-based) to start on
 function startGame(selectedLevel) {
-  // selectedLevel can be a number from level select, or called without args from restart
   let startLevel = (typeof selectedLevel === 'number') ? selectedLevel : 0;
 
   player = {x:c.width/2, y:c.height/2, angle:0};
-  playerStats = { maxHealth: 200, weaponLevel: 0, drones: 0, missiles: 0, tesla: 0, shields: 0, inverted: false }; 
+  // Apply persistent shop upgrades
+  let baseHP = 200 + (shopData.hullPlating * 50);
+  playerStats = {
+    maxHealth: baseHP,
+    weaponLevel: shopData.weaponLevel,
+    drones: shopData.drones,
+    missiles: shopData.missiles,
+    tesla: 0,
+    shields: shopData.shields,
+    inverted: false
+  };
   bullets = []; enemies = []; enemyBullets = []; particles = []; powerups = []; coinPickups = [];
-  health = 200; score = 0; coins = 0; currentLevel = startLevel; nextBossScore = 500 + (startLevel * 200); bossActive = false; boss = null; godMode = false;
+  // coins are NOT reset — they persist across runs
+  health = playerStats.maxHealth;
+  score = 0; currentLevel = startLevel; nextBossScore = 500 + (startLevel * 200); bossActive = false; boss = null; godMode = false;
   inMenu = false; isPaused = false; gameOver = false; gameWon = false; inUpgradeMenu = false;
+  sectorClearedTimer = 0;
 
   document.querySelector('#game-over-screen h1').innerText = "CRITICAL FAILURE";
   document.querySelector('#game-over-screen h1').className = "title-red";
@@ -343,7 +439,13 @@ function startGame(selectedLevel) {
   updateUI(); if (audioCtx.state === 'suspended') audioCtx.resume(); startBGM(); applyDifficultyTimers();
 }
 
+let sectorClearedTimer = 0;
 function triggerLevelUp() { currentLevel++; nextBossScore = score + 500 + (currentLevel * 200); applyDifficultyTimers(); updateUI(); }
+function triggerVictory() {
+  sectorClearedTimer = 180; // 3 seconds at 60fps
+  saveProgress();
+  setTimeout(() => { triggerLevelUp(); }, 2000);
+}
 function returnToMenu() { inMenu = true; isPaused = false; Object.values(menus).forEach(m => m.style.display = 'none'); menus.main.style.display = "flex"; clearInterval(bgmInterval); isBgmPlaying = false; }
 function togglePause() {
   if(inMenu || gameOver || gameWon || inUpgradeMenu) return; isPaused = !isPaused;
@@ -357,14 +459,12 @@ function triggerGameOver() {
   document.getElementById('go-highscore').innerText = highScore;
   menus.hud.style.display = "none"; menus.mobileControls.style.display = "none"; menus.gameOver.style.display = "flex"; clearInterval(bgmInterval); isBgmPlaying = false; 
 }
-function triggerVictory() {
-  showUpgradeScreen();
-}
 
 function updateUI() {
   document.getElementById('score-display').innerText = "SCORE: " + score; 
   document.getElementById('level-display').innerText = "LEVEL: " + (currentLevel + 1);
   document.getElementById('coin-display').innerText = "⬡ " + coins + " CREDITS";
+  saveProgress();
 
   // High score
   let highScore = parseInt(localStorage.getItem("highScore")) || 0;
@@ -420,10 +520,10 @@ window.addEventListener("keydown", (e) => {
   if (DEV_MODE && !inMenu && !gameOver && !gameWon) {
       if (e.key.toLowerCase() === 'b' && !bossActive) spawnBoss();
       if (e.key.toLowerCase() === 'g') { godMode = !godMode; updateUI(); }
-      if (e.key.toLowerCase() === 'u') { playerStats.weaponLevel = 3; playerStats.drones = 2; playerStats.missiles = 3; playerStats.tesla = 2; playerStats.shields = 3; playSound('levelup'); }
-      if (e.key.toLowerCase() === 'l') { showUpgradeScreen(); }
+      if (e.key.toLowerCase() === 'u') { playerStats.weaponLevel = 3; playerStats.drones = 2; playerStats.missiles = 3; playerStats.shields = 3; playSound('levelup'); }
       if (e.key.toLowerCase() === 'k') { enemies = []; createExplosion(c.width/2, c.height/2, "orange", 50, 5); playSound('explode'); }
-      if (e.key.toLowerCase() === 'n') { currentLevel++; score+=500; updateUI(); spawnBoss(); } 
+      if (e.key.toLowerCase() === 'n') { currentLevel++; score+=500; updateUI(); spawnBoss(); }
+      if (e.key.toLowerCase() === 'c') { coins += 100; updateUI(); } // add 100 credits for testing
   }
 });
 
@@ -502,6 +602,7 @@ function update(){
   if(gameOver || gameWon || inMenu || isPaused || inUpgradeMenu) return;
 
   if (shakeDuration > 0) shakeDuration--;
+  if (sectorClearedTimer > 0) sectorClearedTimer--;
 
   if (particles.length > 200) particles.splice(0, particles.length - 200);
   if (enemyBullets.length > 150) enemyBullets.splice(0, enemyBullets.length - 150);
@@ -1030,6 +1131,24 @@ function draw(){
             ctx.beginPath(); ctx.arc(sx, sy, 10, 0, Math.PI*2); ctx.fill(); ctx.stroke();
         }
     }
+  }
+
+  // --- SECTOR CLEARED Banner ---
+  if (sectorClearedTimer > 0) {
+    let alpha = Math.min(1, sectorClearedTimer / 30) * Math.min(1, (sectorClearedTimer - 20) / 20 + 1);
+    alpha = Math.max(0, Math.min(1, sectorClearedTimer / 40));
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.shadowColor = "lime"; ctx.shadowBlur = 40;
+    ctx.fillStyle = "lime";
+    ctx.font = "bold " + (c.width < 600 ? "28" : "48") + "px Orbitron";
+    ctx.fillText("✓ SECTOR CLEARED", c.width / 2, c.height / 2 - 20);
+    ctx.shadowBlur = 20;
+    ctx.fillStyle = "white";
+    ctx.font = (c.width < 600 ? "12" : "16") + "px Orbitron";
+    ctx.fillText("CREDITS SAVED — ADVANCING TO NEXT ZONE", c.width / 2, c.height / 2 + 30);
+    ctx.restore();
   }
 
   ctx.restore(); 

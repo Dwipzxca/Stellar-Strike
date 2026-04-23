@@ -34,6 +34,7 @@
   <div id="main-menu" class="menu-screen">
     <h1 class="title-cyan">STELLAR STRIKE</h1>
     <button id="btn-play">INITIALIZE (PLAY)</button>
+    <button id="btn-shop-open">ARMORY (SHOP)</button>
     <button id="btn-settings-open">CONFIG (SETTINGS)</button>
     <button id="btn-exit" class="btn-red">SHUTDOWN</button>
   </div>
@@ -94,12 +95,14 @@
     <button id="btn-quit" class="btn-red">ABORT MISSION</button>
   </div>
 
-  <div id="upgrade-screen" class="menu-screen" style="max-width: 600px;">
-    <h1 class="title-cyan">SYSTEM OVERRIDE</h1>
-    <p style="color: white; letter-spacing: 2px;">SELECT ONE AUGMENTATION:</p>
-    <div id="upgrade-options" class="upgrade-container">
-      </div>
+  <!-- ===== SHOP SCREEN ===== -->
+  <div id="shop-menu" class="menu-screen" style="max-width: 620px;">
+    <h1 class="title-cyan">ARMORY</h1>
+    <div id="shop-coins" class="shop-coins-display">⬡ 0 CREDITS</div>
+    <div id="shop-items" class="shop-items-list"></div>
+    <button id="btn-shop-close">◄ RETURN TO BASE</button>
   </div>
+  <!-- ========================= -->
 
   <div id="game-over-screen" class="menu-screen">
     <h1 class="title-red">CRITICAL FAILURE</h1>

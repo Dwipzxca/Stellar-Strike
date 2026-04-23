@@ -281,6 +281,143 @@ input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); backgroun
 }
 
 /* ===================================================
+   SHOP SCREEN
+   =================================================== */
+#shop-menu { max-width: 620px; gap: 12px; }
+
+.shop-coins-display {
+  color: gold;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-shadow: 0 0 10px gold, 0 0 20px gold;
+  border: 1px solid rgba(255,215,0,0.4);
+  border-radius: 8px;
+  padding: 8px 16px;
+  background: rgba(255,215,0,0.07);
+}
+
+.shop-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  text-align: left;
+}
+
+.shop-category-header {
+  color: rgba(0,255,255,0.5);
+  font-size: 10px;
+  letter-spacing: 3px;
+  margin-top: 6px;
+  font-family: 'Orbitron', sans-serif;
+}
+
+.shop-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1.5px solid rgba(0,255,255,0.4);
+  border-radius: 8px;
+  background: rgba(0,255,255,0.04);
+  transition: all 0.15s ease;
+}
+
+.shop-card:hover:not(.shop-owned):not(.shop-locked) {
+  background: rgba(0,255,255,0.1);
+  border-color: cyan;
+  box-shadow: 0 0 12px rgba(0,255,255,0.3);
+}
+
+.shop-card.shop-owned {
+  border-color: rgba(0,255,0,0.4);
+  background: rgba(0,255,0,0.04);
+  opacity: 0.7;
+}
+
+.shop-card.shop-locked {
+  border-color: rgba(100,100,100,0.3);
+  background: rgba(0,0,0,0.2);
+  opacity: 0.45;
+}
+
+.shop-card-icon {
+  font-size: 22px;
+  min-width: 32px;
+  text-align: center;
+}
+
+.shop-card-body { flex: 1; }
+
+.shop-card-name {
+  color: cyan;
+  font-size: 12px;
+  font-family: 'Orbitron', sans-serif;
+  letter-spacing: 1px;
+  margin-bottom: 3px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.shop-card.shop-owned .shop-card-name { color: lime; }
+.shop-card.shop-locked .shop-card-name { color: #555; }
+
+.shop-count {
+  font-size: 9px;
+  background: rgba(0,255,255,0.15);
+  border: 1px solid rgba(0,255,255,0.3);
+  border-radius: 4px;
+  padding: 1px 5px;
+  color: rgba(0,255,255,0.7);
+  font-family: monospace;
+  letter-spacing: 1px;
+}
+
+.shop-card-desc {
+  color: rgba(255,255,255,0.55);
+  font-size: 10px;
+  font-family: monospace;
+  letter-spacing: 0.5px;
+}
+
+.shop-card-action {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 5px;
+  min-width: 80px;
+}
+
+.shop-status {
+  font-size: 9px;
+  font-family: 'Orbitron', sans-serif;
+  letter-spacing: 1px;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.shop-status.owned  { color: lime;  border: 1px solid lime;  background: rgba(0,255,0,0.1); }
+.shop-status.locked { color: #555;  border: 1px solid #333;  background: transparent; }
+.shop-status.available { color: gold; border: 1px solid gold; background: rgba(255,215,0,0.08); }
+
+.shop-buy-btn {
+  width: auto;
+  padding: 5px 12px;
+  font-size: 10px;
+  letter-spacing: 1px;
+  border-radius: 5px;
+  color: cyan;
+  border-color: cyan;
+}
+
+.shop-buy-btn.cant-afford {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* ===================================================
    LEVEL SELECT SCREEN
    =================================================== */
 
