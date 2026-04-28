@@ -133,7 +133,7 @@ function playSound(type) {
 let mouse = {x:c.width/2, y:c.height/2};
 let firing = false; let inMenu = true; let isPaused = false; let gameOver = false; let inUpgradeMenu = false; let gameWon = false;
 let altFiring = false; let altChargeTime = 0; let altCooldown = 0; let altBombs = [];
-const ALT_COOLDOWN_MAX = 300; // 5 seconds at 60fps
+const ALT_COOLDOWN_MAX = 1800; // 30 seconds at 60fps
 const ALT_CHARGE_MAX  = 90;  // 1.5 seconds full charge
 let player, bullets, enemies, enemyBullets, stars, particles, powerups, coinPickups;
 let health, score, currentLevel, nextBossScore; let bossActive = false; let boss = null;
@@ -197,7 +197,7 @@ function fireAltBomb() {
   let chargeRatio = charge / ALT_CHARGE_MAX;
   let radius    = 14 + chargeRatio * 22;       // 14–36px orb
   let damage    = 80 + chargeRatio * 220;       // 80–300 damage
-  let blastR    = 60 + chargeRatio * 120;       // 60–180px explosion radius
+  let blastR    = 35 + chargeRatio * 80;       // 60–180px explosion radius
   let speed     = 6 + (1 - chargeRatio) * 4;   // faster when less charged
 
   let a = Math.atan2(mouse.y - player.y, mouse.x - player.x);
@@ -590,11 +590,11 @@ function updateUI() {
   let altEl = document.getElementById('altfire-display');
   if (altCooldown > 0) {
     let secs = Math.ceil(altCooldown / 60);
-    altEl.innerText = "⚡ PLASMA: " + secs + "s";
+    altEl.innerText = " PLASMA: " + secs + "s";
     altEl.style.color = "#888";
     altEl.style.textShadow = "none";
   } else {
-    altEl.innerText = "⚡ PLASMA: READY";
+    altEl.innerText = " PLASMA: READY";
     altEl.style.color = "#ff00ff";
     altEl.style.textShadow = "0 0 8px #ff00ff";
   }
