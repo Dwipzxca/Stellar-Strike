@@ -9,6 +9,7 @@
 </head>
 <body>
 
+<div id="game-wrapper">
 <div id="ui-layer">
   <div id="hud">
     <div class="health-wrapper">
@@ -70,6 +71,10 @@
       <input type="range" id="slider-fov" min="50" max="200" value="100">
     </div>
     <div class="setting-row">
+      <label>GAME SCALE: <span id="game-val">100%</span></label>
+      <input type="range" id="slider-game" min="40" max="100" value="100">
+    </div>
+    <div class="setting-row">
       <label>POST PROCESSING:</label>
       <div class="diff-group">
         <button id="toggle-scanlines" class="active-diff toggle-btn" onclick="toggleFX('scanlines')">SCANLINES</button>
@@ -120,9 +125,15 @@
     <div id="joystick-base">
       <div id="joystick-stick"></div>
     </div>
-    <button id="btn-fire">FIRE</button>
+    <div id="right-buttons">
+      <button id="btn-plasma">⚡<br>PLASMA</button>
+      <button id="btn-fire">FIRE</button>
+    </div>
   </div>
 
+</div>
+
+<canvas id="c"></canvas>
 </div>
 
 <div id="shutdown-screen">
@@ -130,7 +141,7 @@
   <p style="color:white; font-family: monospace;">You may close this tab.</p>
 </div>
 
-<canvas id="c"></canvas>
+
 
 <script src="script.js"></script>
 </body>

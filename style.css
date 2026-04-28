@@ -583,3 +583,45 @@ input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); backgroun
   text-shadow: 0 0 5px lime;
   font-family: Arial, sans-serif;
 }
+/* --- Right-side mobile button group --- */
+#right-buttons {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  pointer-events: none;
+}
+
+/* Plasma (alt-fire) mobile button */
+#btn-plasma {
+  width: 80px; height: 80px; border-radius: 50%;
+  background: rgba(255, 0, 255, 0.15); border: 2px solid #ff00ff;
+  color: #fff; font-size: 11px; font-weight: bold; line-height: 1.3;
+  text-shadow: 0 0 5px #ff00ff; pointer-events: auto; touch-action: none;
+  box-shadow: 0 0 20px rgba(255,0,255,0.4), inset 0 0 15px rgba(255,0,255,0.4);
+  display: flex; justify-content: center; align-items: center; flex-direction: column;
+  margin: 0; padding: 0; flex-shrink: 0; backdrop-filter: blur(4px);
+  letter-spacing: 1px; font-family: 'Orbitron', sans-serif;
+  transition: all 0.1s ease;
+}
+#btn-plasma:active, #btn-plasma.charging {
+  background: rgba(255, 0, 255, 0.6);
+  box-shadow: 0 0 30px #ff00ff, inset 0 0 20px #ff00ff;
+  transform: scale(0.95);
+}
+
+/* --- GAME SCALE WRAPPER --- */
+#game-wrapper {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw; height: 100vh;
+  transform-origin: top left;
+  /* background of body shows as black gaps when scaled down */
+}
+
+/* When menus are inside a scaled wrapper, remove max-height so they
+   never need internal scrolling (applied via JS class on wrapper) */
+#game-wrapper.no-scroll-menus .menu-screen {
+  max-height: none !important;
+  overflow-y: visible !important;
+}

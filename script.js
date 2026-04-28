@@ -63,6 +63,15 @@ document.getElementById('slider-fov').addEventListener('input', (e) => {
   c.style.translate = '-50% -50%';
 });
 
+document.getElementById('slider-game').addEventListener('input', (e) => {
+  const gameScale = e.target.value / 100;
+  document.getElementById('game-val').innerText = e.target.value + "%";
+  const wrapper = document.getElementById('game-wrapper');
+  wrapper.style.transform = `scale(${gameScale})`;
+  // Remove menu scroll when game is scaled small enough (menus fit without scrolling)
+  wrapper.classList.toggle('no-scroll-menus', gameScale <= 0.80);
+});
+
 function toggleFX(type) {
   postFX[type] = !postFX[type];
   const btn = document.getElementById('toggle-' + type);
@@ -593,10 +602,16 @@ function updateUI() {
   // Boss progress bar
   let bossBarEl = document.getElementById('boss-progress-bar');
   let bossScoreEl = document.getElementById('boss-score-display');
-  if (!bossActive) {
+  let bossLabelEl = document.querySelector('.boss-incoming-label');
+  if (bossActive) {
+    bossBarEl.style.width = "100%";
+    bossScoreEl.innerText = nextBossScore + " / " + nextBossScore;
+    if (bossLabelEl) { bossLabelEl.innerText = "⚠ BOSS ACTIVE"; bossLabelEl.style.color = "red"; }
+  } else {
     let pct = Math.min(100, (score / nextBossScore) * 100);
     bossBarEl.style.width = pct + "%";
     bossScoreEl.innerText = score + " / " + nextBossScore;
+    if (bossLabelEl) { bossLabelEl.innerText = "BOSS INCOMING"; bossLabelEl.style.color = ""; }
   }
 
   saveProgress();
@@ -666,7 +681,7 @@ window.addEventListener("mouseup", (e)=> {
 });
 window.addEventListener("contextmenu", (e)=> { if (e.target.id === "c") e.preventDefault(); });
 
-const joyBase = document.getElementById('joystick-base'); const joyStick = document.getElementById('joystick-stick'); const fireBtn = document.getElementById('btn-fire');
+const joyBase = document.getElementById('joystick-base'); const joyStick = document.getElementById('joystick-stick'); const fireBtn = document.getElementById('btn-fire'); const plasmaBtn = document.getElementById('btn-plasma');
 joyBase.addEventListener('touchstart', (e) => { e.preventDefault(); if (joystick.touchId !== null) return; let touch = e.changedTouches[0]; joystick.touchId = touch.identifier; updateJoystickVector(touch); }, {passive: false});
 joyBase.addEventListener('touchmove', (e) => { e.preventDefault(); for (let i = 0; i < e.changedTouches.length; i++) { if (e.changedTouches[i].identifier === joystick.touchId) updateJoystickVector(e.changedTouches[i]); } }, {passive: false});
 const resetJoystick = (e) => { e.preventDefault(); for (let i = 0; i < e.changedTouches.length; i++) { if (e.changedTouches[i].identifier === joystick.touchId) { joystick.touchId = null; joystick.active = false; joystick.dx = 0; joystick.dy = 0; joyStick.style.transform = `translate(0px, 0px)`; } } };
@@ -678,31 +693,33 @@ function updateJoystickVector(touch) {
   if (distance > maxDist) { dx = (dx / distance) * maxDist; dy = (dy / distance) * maxDist; }
   joyStick.style.transform = `translate(${dx}px, ${dy}px)`; joystick.dx = dx / maxDist; joystick.dy = dy / maxDist;
 }
-let fireBtnLongPress = null;
+// FIRE button — primary fire only
 fireBtn.addEventListener('touchstart', (e) => {
   e.preventDefault();
   firing = true;
   if (audioCtx.state === 'suspended') audioCtx.resume();
-  // Long-press (600ms) switches to alt-fire charge
-  fireBtnLongPress = setTimeout(() => {
-    firing = false;
-    altFiring = true;
-    fireBtn.style.borderColor = '#ff00ff';
-    fireBtn.style.boxShadow = '0 0 20px magenta, inset 0 0 15px magenta';
-  }, 600);
 }, {passive: false});
-fireBtn.addEventListener('touchend', (e) => {
+fireBtn.addEventListener('touchend', (e) => { e.preventDefault(); firing = false; }, {passive: false});
+fireBtn.addEventListener('touchcancel', (e) => { e.preventDefault(); firing = false; }, {passive: false});
+
+// PLASMA button — hold to charge, release to fire alt bomb
+plasmaBtn.addEventListener('touchstart', (e) => {
   e.preventDefault();
-  clearTimeout(fireBtnLongPress);
-  if (altFiring) { fireAltBomb(); altFiring = false; altChargeTime = 0; }
-  firing = false;
-  fireBtn.style.borderColor = ''; fireBtn.style.boxShadow = '';
+  if (altCooldown > 0 || inMenu || gameOver || gameWon || isPaused) return;
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  altFiring = true;
+  plasmaBtn.classList.add('charging');
 }, {passive: false});
-fireBtn.addEventListener('touchcancel', (e) => {
+plasmaBtn.addEventListener('touchend', (e) => {
   e.preventDefault();
-  clearTimeout(fireBtnLongPress);
-  firing = false; altFiring = false; altChargeTime = 0;
-  fireBtn.style.borderColor = ''; fireBtn.style.boxShadow = '';
+  if (altFiring) { fireAltBomb(); }
+  altFiring = false; altChargeTime = 0;
+  plasmaBtn.classList.remove('charging');
+}, {passive: false});
+plasmaBtn.addEventListener('touchcancel', (e) => {
+  e.preventDefault();
+  altFiring = false; altChargeTime = 0;
+  plasmaBtn.classList.remove('charging');
 }, {passive: false});
 
 let droneTick = 0; let missileTick = 0; let fireCooldown = 0;
@@ -1400,7 +1417,7 @@ function draw(){
     ctx.fillText("CREDITS SAVED — ADVANCING TO NEXT ZONE", c.width / 2, c.height / 2 + 15);
     ctx.fillStyle = "gold"; ctx.shadowColor = "gold"; ctx.shadowBlur = 15;
     ctx.font = (c.width < 600 ? "11" : "14") + "px Orbitron";
-    ctx.fillText("BEST: " + highscore, c.width / 2, c.height / 2 + 45);
+    ctx.fillText("BEST: " + (parseInt(localStorage.getItem("highScore")) || 0), c.width / 2, c.height / 2 + 45);
     ctx.restore();
   }
 
